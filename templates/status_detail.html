@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Application {{ app.app_id }} — 433 W 34th St{% endblock %}
+{% block content %}
+<div class="container">
+
+  <!-- Status track -->
+  {% set stages = ['Received', 'Architect Assigned', 'Architect Review', 'Board Approved', 'Work In Progress', 'Complete'] %}
+  {% set status_order = {'Received': 0, 'Architect Assigned': 1, 'Architect Review': 2, 'Awaiting Board Vote': 2, 'Board Approved': 3, 'Work In Progress': 4, 'Complete': 5} %}
+  {% set current_idx = status_order.get(app.status, 0) %}
+  <div class="status-track" style="margin-bottom:24px;">
+    {% for stage in stages %}
+      {% set stage_idx = loop.index0 %}
+      {% if stage_idx == current_idx %}
+        <div class="status-step active">{{ stage }}</div>
+      {% elif stage_idx < current_idx %}
+        <div class="status-step done">{{ stage }}</div>
+      {% else %}
+        <div class="status-step">{{ stage }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- Header card -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h2 style="border:none; margin-bottom:4px;">Apt {{ app.apartment }} — {{ app.shareholder_name }}</h2>
+        <div style="font-size:13px; color:#888;">{{ app.app_id }} &nbsp;·&nbsp; Submitted {{ app.submitted_at[:10] }}</div>
+      </div>
+      <div>
+        <span class="badge badge-{{ app.status | lower | replace(' ', '-') }}">{{ app.status }}</span>
+      </div>
+    </div>
+
+    {% if app.riser_flag == 'yes' %}
+    <div class="flag-riser" style="margin-top:16px;">
+      ⚠️ <strong>Riser Assessment Flagged</strong> — The building superintendent will assess riser condition
+      before demo begins. The board will coordinate timing.
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Application details -->
+  <div class="card">
+    <h2>Application Details</h2>
+    <dl class="detail-grid">
+      <dt>Project Type</dt>
+      <dd>{{ 'Decoration Project' if app.project_type == 'decoration' else 'Full Alteration' }}</dd>
+      <dt>Scope of Work</dt>
+      <dd style="white-space:pre-wrap;">{{ app.scope_description }}</dd>
+      <dt>Estimated Cost</dt>
+      <dd>${{ app.estimated_cost }}</dd>
+      <dt>Proposed Start</dt>
+      <dd>{{ app.start_date or '—' }}</dd>
+      <dt>Proposed Completion</dt>
+      <dd>{{ app.end_date or '—' }}</dd>
+      <dt>General Contractor</dt>
+      <dd>{{ app.gc_name }} — {{ app.gc_company }}</dd>
+      <dt>Architect Assigned</dt>
+      <dd>{{ app.architect_assigned or 'Pending assignment' }}</dd>
+      <dt>Expedited Review</dt>
+      <dd>{{ 'Yes' if app.expediting == 'yes' else 'No' }}</dd>
+    </dl>
+  </div>
+
+  <!-- Checklist -->
+  <div class="card">
+    <h2>Progress Checklist</h2>
+    <table class="data-table">
+      <thead><tr><th>Item</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Application received</td>
+          <td><span style="color:#27ae60;">✓ Complete</span></td>
+        </tr>
+        <tr>
+          <td>Architect assigned</td>
+          <td>
+            {% if app.architect_assigned %}
+              <span style="color:#27ae60;">✓ {{ app.architect_assigned }}</span>
+            {% else %}
+              <span style="color:#aaa;">⏳ Awaiting board assignment</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Architect review</td>
+          <td>
+            {% if app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+              <span style="color:#27ae60;">✓ Complete</span>
+            {% elif app.architect_assigned %}
+              <span style="color:#e67e22;">⏳ In progress — respond promptly to any architect requests</span>
+            {% else %}
+              <span style="color:#aaa;">— Not started</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Board approval</td>
+          <td>
+            {% if app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+              <span style="color:#27ae60;">✓ Approved</span>
+            {% else %}
+              <span style="color:#aaa;">— Pending architect recommendation</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Security deposit</td>
+          <td>
+            {% if app.payment_status == 'Received' %}
+              <span style="color:#27ae60;">✓ Confirmed received</span>
+            {% elif app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+              <span style="color:#e67e22;">⏳ Required — payable to 433 West 34th Street Owners Corp., memo: {{ app.app_id }}. Send to Orsid Realty, 156 W 56th St, 6th Fl.</span>
+            {% else %}
+              <span style="color:#aaa;">— Confirmed after board approval</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Neighbor notification letters</td>
+          <td>
+            {% if app.neighbor_letters_sent == 'yes' %}
+              <span style="color:#27ae60;">✓ Confirmed</span>
+            {% elif app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+              <span style="color:#e67e22;">⚠️ Required — send letters and CC alterations@433w34.com</span>
+            {% else %}
+              <span style="color:#aaa;">— Sent after board approval</span>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td>Permits</td>
+          <td>
+            {% if app.permit_required == 'no' %}
+              <span style="color:#27ae60;">✓ Not required for this scope</span>
+            {% elif app.permit_required == 'yes' %}
+              {% set permits = app.permits | default('[]') %}
+              Required — {{ permits }}
+            {% else %}
+              <span style="color:#aaa;">— Determined during architect review</span>
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  {% if app.ai_review_summary %}
+  <div class="card">
+    <h2>Preliminary Review Notes</h2>
+    <p style="color:#444;">{{ app.ai_review_summary }}</p>
+    <p style="font-size:12px; color:#aaa; margin-top:12px;">
+      This is an automated preliminary review. The assigned architect's report is the authoritative review.
+    </p>
+  </div>
+  {% endif %}
+
+  {% if app.notes %}
+  <div class="card">
+    <h2>Board Notes</h2>
+    <p style="color:#444; white-space:pre-wrap;">{{ app.notes }}</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

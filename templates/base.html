@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}433 West 34th Street — Alteration Portal{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+           background: #f5f6fa; color: #222; font-size: 15px; line-height: 1.6; }
+    a { color: #1a5276; }
+
+    .site-header {
+      background: #1a3a5c; color: white; padding: 16px 32px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .site-header h1 { font-size: 18px; font-weight: 600; }
+    .site-header .sub { font-size: 12px; opacity: 0.7; }
+
+    nav { background: #154360; padding: 0 32px; }
+    nav a { color: rgba(255,255,255,0.85); text-decoration: none; display: inline-block;
+             padding: 10px 16px; font-size: 13px; }
+    nav a:hover { color: white; background: rgba(255,255,255,0.1); }
+
+    .container { max-width: 860px; margin: 32px auto; padding: 0 24px; }
+    .wide-container { max-width: 1100px; margin: 32px auto; padding: 0 24px; }
+
+    .card { background: white; border-radius: 8px; padding: 32px;
+             box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .card h2 { font-size: 20px; color: #1a3a5c; margin-bottom: 20px;
+                padding-bottom: 12px; border-bottom: 2px solid #eaf0fb; }
+    .card h3 { font-size: 15px; color: #1a3a5c; margin: 20px 0 10px; }
+
+    .form-group { margin-bottom: 18px; }
+    label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 5px; color: #444; }
+    label .req { color: #c0392b; margin-left: 2px; }
+    label .hint { font-weight: normal; color: #888; font-size: 12px; margin-left: 6px; }
+    input[type=text], input[type=email], input[type=tel], input[type=number],
+    input[type=date], input[type=file], select, textarea {
+      width: 100%; padding: 9px 12px; border: 1px solid #d0d7e0; border-radius: 5px;
+      font-size: 14px; font-family: inherit; transition: border-color .15s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: #1a5276; box-shadow: 0 0 0 3px rgba(26,82,118,0.1);
+    }
+    textarea { resize: vertical; min-height: 100px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
+    .checkbox-item { display: flex; align-items: center; gap: 6px; font-weight: normal; }
+    .checkbox-item input { width: auto; }
+
+    .btn { display: inline-block; padding: 11px 24px; border-radius: 5px; border: none;
+            font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none;
+            transition: background .15s; }
+    .btn-primary { background: #1a5276; color: white; }
+    .btn-primary:hover { background: #154360; }
+    .btn-secondary { background: #eaf0fb; color: #1a5276; }
+    .btn-secondary:hover { background: #d6e8f5; }
+    .btn-success { background: #1e8449; color: white; }
+    .btn-success:hover { background: #196f3d; }
+    .btn-danger { background: #c0392b; color: white; }
+    .btn-danger:hover { background: #a93226; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; }
+
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: 12px;
+              font-weight: 600; }
+    .badge-received   { background: #d6eaf8; color: #1a5276; }
+    .badge-assigned   { background: #fdebd0; color: #9c5a00; }
+    .badge-review     { background: #f9e4b7; color: #7d6608; }
+    .badge-approved   { background: #d5f5e3; color: #1e8449; }
+    .badge-rejected   { background: #fadbd8; color: #922b21; }
+    .badge-complete   { background: #d5d8dc; color: #424949; }
+
+    .flag-riser { background: #fff3cd; border-left: 3px solid #f0ad4e;
+                   padding: 8px 12px; border-radius: 4px; font-size: 13px; margin: 8px 0; }
+
+    .alert { padding: 12px 16px; border-radius: 5px; margin-bottom: 16px; font-size: 14px; }
+    .alert-success { background: #d5f5e3; border-left: 4px solid #27ae60; }
+    .alert-error   { background: #fadbd8; border-left: 4px solid #c0392b; }
+    .alert-info    { background: #d6eaf8; border-left: 4px solid #2980b9; }
+    .alert-warning { background: #fff3cd; border-left: 4px solid #f0ad4e; }
+
+    table.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.data-table th { background: #1a3a5c; color: white; padding: 10px 14px;
+                           text-align: left; font-size: 13px; font-weight: 600; }
+    table.data-table td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: top; }
+    table.data-table tr:hover td { background: #f8fbff; }
+
+    .section-divider { border: none; border-top: 1px solid #eee; margin: 24px 0; }
+
+    .status-track { display: flex; gap: 0; margin: 20px 0; }
+    .status-step { flex: 1; text-align: center; padding: 8px 4px; font-size: 12px;
+                    border-bottom: 3px solid #e0e0e0; color: #aaa; }
+    .status-step.done { border-color: #27ae60; color: #27ae60; font-weight: 600; }
+    .status-step.active { border-color: #1a5276; color: #1a5276; font-weight: 700; }
+
+    .detail-grid { display: grid; grid-template-columns: 200px 1fr; gap: 0; }
+    .detail-grid dt { background: #f4f6f7; padding: 9px 14px; font-weight: 600;
+                       font-size: 13px; color: #555; border-bottom: 1px solid #eee; }
+    .detail-grid dd { padding: 9px 14px; border-bottom: 1px solid #eee; }
+
+    .spinner { display: none; }
+    body.loading .spinner { display: inline-block; }
+
+    footer { text-align: center; padding: 32px; font-size: 12px; color: #aaa; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+<header class="site-header">
+  <div>
+    <h1>433 West 34th Street Owners Corp.</h1>
+    <div class="sub">Alteration Application Portal</div>
+  </div>
+</header>
+<nav>
+  <a href="/">Home</a>
+  <a href="/apply">Submit Application</a>
+  <a href="/status">Track Status</a>
+  {% if session.get('user_email') %}
+  <a href="/admin">Admin Dashboard</a>
+  <a href="/auth/logout">Log Out</a>
+  {% else %}
+  <a href="/auth/login">Board Login</a>
+  {% endif %}
+</nav>
+
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="container" style="margin-top:16px;">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  433 West 34th Street Owners Corp. &nbsp;·&nbsp; alterations@433w34.com
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

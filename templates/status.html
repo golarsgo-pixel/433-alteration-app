@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Track Application — 433 W 34th St{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="card" style="max-width:480px; margin:0 auto;">
+    <h2>Track Your Application</h2>
+    <p style="color:#555; margin-bottom:20px;">
+      Enter the Application ID from your confirmation email.
+    </p>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="GET" action="/status/lookup">
+      <div class="form-group">
+        <label>Application ID <span class="req">*</span></label>
+        <input type="text" name="app_id" placeholder="e.g. ALT-202506-A1B2C"
+               style="font-size:16px; text-transform:uppercase; letter-spacing:1px;"
+               required autocomplete="off">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Look Up Application</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

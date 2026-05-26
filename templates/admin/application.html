@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Apt {{ app.apartment }} — {{ app.app_id }}{% endblock %}
+{% block content %}
+<div class="wide-container">
+
+  <!-- Header -->
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div>
+      <a href="/admin" style="font-size:13px; color:#888;">← All Applications</a>
+      <h2 style="font-size:22px; color:#1a3a5c; margin-top:4px;">
+        Apt {{ app.apartment }} — {{ app.shareholder_name }}
+      </h2>
+      <div style="font-size:13px; color:#888;">
+        {{ app.app_id }} &nbsp;·&nbsp; Submitted {{ app.submitted_at[:10] }}
+        &nbsp;·&nbsp; <span class="badge badge-{{ app.status | lower | replace(' ', '-') }}">{{ app.status }}</span>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      {% if app.drive_folder_url %}
+      <a href="{{ app.drive_folder_url }}" target="_blank" class="btn btn-secondary btn-sm">📁 View Documents</a>
+      {% endif %}
+      <a href="/status/{{ app.app_id }}" target="_blank" class="btn btn-secondary btn-sm">Shareholder View ↗</a>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;">
+
+    <!-- LEFT COLUMN -->
+    <div>
+
+      <!-- AI Review -->
+      {% if app.ai_review_summary %}
+      <div class="card" style="border-left:4px solid #1a5276;">
+        <h2>AI Preliminary Review</h2>
+        <p style="margin-bottom:16px;">{{ app.ai_review_summary }}</p>
+        {% if app.riser_flag == 'yes' %}
+        <div class="flag-riser">
+          ⚠️ <strong>Riser Risk Flagged</strong> — Scope involves plumbing/kitchen/bathroom work.
+          Eddie should assess riser condition in Apt {{ app.apartment }} before demo begins.
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Application Info -->
+      <div class="card">
+        <h2>Application Details</h2>
+        <dl class="detail-grid">
+          <dt>Project Type</dt>
+          <dd>{{ 'Decoration Project' if app.project_type == 'decoration' else 'Full Alteration' }}</dd>
+          <dt>Estimated Cost</dt>
+          <dd>${{ app.estimated_cost }}</dd>
+          <dt>Proposed Start</dt>
+          <dd>{{ app.start_date or '—' }}</dd>
+          <dt>Proposed End</dt>
+          <dd>{{ app.end_date or '—' }}</dd>
+          <dt>Involves Plumbing</dt>
+          <dd>{{ 'Yes' if app.involves_plumbing == 'yes' else 'No' }}</dd>
+          <dt>Involves Electrical</dt>
+          <dd>{{ 'Yes' if app.involves_electrical == 'yes' else 'No' }}</dd>
+          <dt>Involves Kitchen</dt>
+          <dd>{{ 'Yes' if app.involves_kitchen == 'yes' else 'No' }}</dd>
+          <dt>Involves Bathroom</dt>
+          <dd>{{ 'Yes' if app.involves_bathroom == 'yes' else 'No' }}</dd>
+          <dt>Involves Structural</dt>
+          <dd>{{ 'Yes' if app.involves_structural == 'yes' else 'No' }}</dd>
+          <dt>GC / Company</dt>
+          <dd>{{ app.gc_name }} — {{ app.gc_company }}<br>
+              <a href="mailto:{{ app.gc_email }}">{{ app.gc_email }}</a>
+              {% if app.gc_phone %} · {{ app.gc_phone }}{% endif %}</dd>
+          <dt>Plumber</dt>
+          <dd>{{ app.plumber_name or '—' }}</dd>
+          <dt>Electrician</dt>
+          <dd>{{ app.electrician_name or '—' }}</dd>
+          <dt>Shareholder Email</dt>
+          <dd><a href="mailto:{{ app.shareholder_email }}">{{ app.shareholder_email }}</a></dd>
+          <dt>Shareholder Phone</dt>
+          <dd>{{ app.shareholder_phone or '—' }}</dd>
+        </dl>
+        <h3 style="margin-top:20px;">Scope of Work</h3>
+        <p style="background:#f9f9f9; padding:12px; border-left:3px solid #ccc;
+                  white-space:pre-wrap; font-size:14px;">{{ app.scope_description }}</p>
+      </div>
+
+      <!-- Notes -->
+      <div class="card">
+        <h2>Board Notes</h2>
+        <form method="POST" action="/admin/application/{{ app.app_id }}/update">
+          <input type="hidden" name="field" value="notes">
+          <div class="form-group">
+            <textarea name="value" rows="5" placeholder="Internal notes visible to the board only…">{{ app.notes or '' }}</textarea>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-sm">Save Notes</button>
+        </form>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: Actions -->
+    <div>
+
+      <!-- Architect Assignment -->
+      <div class="card">
+        <h2>Architect Assignment</h2>
+        {% if app.architect_assigned %}
+        <p style="margin-bottom:12px;">
+          <strong>Assigned:</strong> {{ app.architect_assigned }}<br>
+          <strong>Expedited:</strong> {{ 'Yes' if app.expediting == 'yes' else 'No' }}
+        </p>
+        {% endif %}
+        <form method="POST" action="/admin/application/{{ app.app_id }}/assign">
+          <div class="form-group">
+            <label>Architect</label>
+            <select name="architect" required>
+              <option value="">— Select —</option>
+              <option value="Melone" {{ 'selected' if app.architect_assigned == 'Melone' }}>
+                Melone Architects (Jeremy Welsh + Nick Melone)
+              </option>
+              <option value="Capobianco" {{ 'selected' if app.architect_assigned == 'Capobianco' }}>
+                Capobianco Group (Thomas Capobianco, P.E.)
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-item">
+              <input type="checkbox" name="expediting" value="yes"
+                     {{ 'checked' if app.expediting == 'yes' }}>
+              Expedited review requested
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">
+            {{ 'Reassign & Resend Package' if app.architect_assigned else 'Assign & Send Package' }}
+          </button>
+        </form>
+      </div>
+
+      <!-- Status & Payment -->
+      <div class="card">
+        <h2>Status & Payment</h2>
+        <div class="form-group">
+          <label>Application Status</label>
+          <form method="POST" action="/admin/application/{{ app.app_id }}/update" style="display:flex; gap:8px;">
+            <input type="hidden" name="field" value="status">
+            <select name="value" style="flex:1;">
+              {% for s in ['Received','Architect Assigned','Architect Review',
+                            'Awaiting Board Vote','Board Approved','Work In Progress','Complete','On Hold','Rejected'] %}
+              <option {{ 'selected' if app.status == s }}>{{ s }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Set</button>
+          </form>
+        </div>
+
+        <div class="form-group">
+          <label>Security Deposit</label>
+          <form method="POST" action="/admin/application/{{ app.app_id }}/update" style="display:flex; gap:8px;">
+            <input type="hidden" name="field" value="payment_status">
+            <select name="value" style="flex:1;">
+              <option {{ 'selected' if app.payment_status == 'Pending' }}>Pending</option>
+              <option {{ 'selected' if app.payment_status == 'Received' }}>Received</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Set</button>
+          </form>
+        </div>
+
+        <div class="form-group">
+          <label>Riser Flag</label>
+          <form method="POST" action="/admin/application/{{ app.app_id }}/update" style="display:flex; gap:8px;">
+            <input type="hidden" name="field" value="riser_flag">
+            <select name="value" style="flex:1;">
+              <option value="no" {{ 'selected' if app.riser_flag != 'yes' }}>No riser risk</option>
+              <option value="yes" {{ 'selected' if app.riser_flag == 'yes' }}>⚠️ Riser assessment needed</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Set</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Permits -->
+      <div class="card">
+        <h2>Permits</h2>
+        <div class="form-group">
+          <label>Permit Required?</label>
+          <form method="POST" action="/admin/application/{{ app.app_id }}/update" style="display:flex; gap:8px;">
+            <input type="hidden" name="field" value="permit_required">
+            <select name="value" style="flex:1;">
+              <option value="" {{ 'selected' if not app.permit_required }}>— TBD —</option>
+              <option value="no" {{ 'selected' if app.permit_required == 'no' }}>No permit required</option>
+              <option value="yes" {{ 'selected' if app.permit_required == 'yes' }}>Yes — permit required</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Set</button>
+          </form>
+        </div>
+
+        {% if app.permit_required == 'yes' %}
+        <div class="form-group">
+          <label>Permit Details
+            <span class="hint">List each permit type, number, status — one per line<br>
+            e.g. Plumbing: #2026-12345 (Open), Electrical: pending</span>
+          </label>
+          <form method="POST" action="/admin/application/{{ app.app_id }}/update">
+            <input type="hidden" name="field" value="permits">
+            <textarea name="value" rows="4" placeholder="Plumbing permit: #2026-xxxxx (Open)&#10;Electrical permit: pending">{{ app.permits or '' }}</textarea>
+            <button type="submit" class="btn btn-secondary btn-sm" style="margin-top:8px;">Save Permits</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Neighbor Letters -->
+      <div class="card">
+        <h2>Neighbor Letters</h2>
+        {% if app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+        <div class="form-group">
+          <label>Letters Sent & Confirmed?</label>
+          <form method="POST" action="/admin/application/{{ app.app_id }}/update" style="display:flex; gap:8px; margin-bottom:12px;">
+            <input type="hidden" name="field" value="neighbor_letters_sent">
+            <select name="value" style="flex:1;">
+              <option value="no" {{ 'selected' if app.neighbor_letters_sent != 'yes' }}>Not yet confirmed</option>
+              <option value="yes" {{ 'selected' if app.neighbor_letters_sent == 'yes' }}>✓ Confirmed</option>
+            </select>
+            <button type="submit" class="btn btn-secondary btn-sm">Set</button>
+          </form>
+          <form method="POST" action="/admin/application/{{ app.app_id }}/neighbor-letters">
+            <button type="submit" class="btn btn-secondary btn-sm" style="width:100%;">
+              Send Letter Template to Shareholder
+            </button>
+          </form>
+        </div>
+        {% else %}
+        <p style="font-size:13px; color:#888;">Sent after board approval.</p>
+        {% endif %}
+      </div>
+
+      <!-- Board Approval -->
+      {% if app.status not in ['Board Approved', 'Work In Progress', 'Complete', 'Rejected'] %}
+      <div class="card" style="border:2px solid #27ae60;">
+        <h2 style="color:#1e8449;">Board Approval</h2>
+        <p style="font-size:13px; color:#555; margin-bottom:16px;">
+          Only approve once the architect has recommended approval. This will notify the shareholder,
+          GC, Eddie, and Orsid building management.
+        </p>
+        <form method="POST" action="/admin/application/{{ app.app_id }}/approve"
+              onsubmit="return confirm('Approve this application and send notifications to all parties?')">
+          <button type="submit" class="btn btn-success" style="width:100%;">
+            ✓ Approve & Notify All Parties
+          </button>
+        </form>
+      </div>
+      {% elif app.status == 'Board Approved' %}
+      <div class="card" style="border:2px solid #27ae60; text-align:center; padding:20px;">
+        <div style="font-size:28px; margin-bottom:8px;">✅</div>
+        <strong style="color:#1e8449;">Board Approved</strong>
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — 433 W 34th St{% endblock %}
+{% block content %}
+<div class="wide-container">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <h2 style="font-size:22px; color:#1a3a5c;">Alteration Applications</h2>
+    <div style="font-size:13px; color:#888;">Logged in as {{ session.user_email }}</div>
+  </div>
+
+  <!-- Summary tiles -->
+  {% set ns = namespace(received=0, assigned=0, review=0, approved=0, wip=0) %}
+  {% for a in applications %}
+    {% if a.status == 'Received' %}{% set ns.received = ns.received + 1 %}{% endif %}
+    {% if a.status == 'Architect Assigned' %}{% set ns.assigned = ns.assigned + 1 %}{% endif %}
+    {% if a.status == 'Architect Review' %}{% set ns.review = ns.review + 1 %}{% endif %}
+    {% if a.status == 'Board Approved' %}{% set ns.approved = ns.approved + 1 %}{% endif %}
+    {% if a.status == 'Work In Progress' %}{% set ns.wip = ns.wip + 1 %}{% endif %}
+  {% endfor %}
+
+  <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:24px;">
+    {% for label, count, color in [
+        ('Needs Assignment', ns.received, '#c0392b'),
+        ('Architect Assigned', ns.assigned, '#e67e22'),
+        ('In Review', ns.review, '#f0ad4e'),
+        ('Approved', ns.approved, '#27ae60'),
+        ('Work In Progress', ns.wip, '#1a5276')] %}
+    <div style="background:white; border-radius:8px; padding:16px; text-align:center;
+                box-shadow:0 1px 4px rgba(0,0,0,0.08); border-top:3px solid {{ color }};">
+      <div style="font-size:28px; font-weight:700; color:{{ color }};">{{ count }}</div>
+      <div style="font-size:12px; color:#666; margin-top:4px;">{{ label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if applications %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Apt</th>
+          <th>Shareholder</th>
+          <th>Type</th>
+          <th>Submitted</th>
+          <th>Status</th>
+          <th>Architect</th>
+          <th>Flags</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in applications | sort(attribute='submitted_at', reverse=True) %}
+        <tr>
+          <td style="font-family:monospace; font-size:12px;">{{ a.app_id }}</td>
+          <td><strong>{{ a.apartment }}</strong></td>
+          <td>
+            {{ a.shareholder_name }}<br>
+            <span style="font-size:12px; color:#888;">{{ a.gc_company or a.gc_name }}</span>
+          </td>
+          <td style="font-size:12px;">
+            {{ 'Decoration' if a.project_type == 'decoration' else 'Full Alt.' }}
+          </td>
+          <td style="font-size:12px; color:#888;">{{ a.submitted_at[:10] }}</td>
+          <td>
+            <span class="badge badge-{{ a.status | lower | replace(' ', '-') }}">{{ a.status }}</span>
+          </td>
+          <td style="font-size:13px;">{{ a.architect_assigned or '—' }}</td>
+          <td>
+            {% if a.riser_flag == 'yes' %}
+              <span title="Riser assessment needed" style="cursor:default;">⚠️</span>
+            {% endif %}
+            {% if a.payment_status != 'Received' %}
+              <span title="Deposit not confirmed" style="cursor:default;">💰</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="/admin/application/{{ a.app_id }}" class="btn btn-secondary btn-sm">View →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center; padding:48px; color:#888;">
+    No applications yet. They'll appear here when shareholders submit.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

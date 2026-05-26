@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Application Submitted — 433 W 34th St{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="card" style="text-align:center; padding:48px 32px;">
+    <div style="font-size:48px; margin-bottom:16px;">✅</div>
+    <h2 style="border:none; font-size:24px; color:#1e8449; margin-bottom:12px;">Application Submitted</h2>
+    <p style="color:#555; margin-bottom:24px; max-width:480px; margin-left:auto; margin-right:auto;">
+      Your application has been received. You'll get a confirmation email shortly with your Application ID
+      and next steps. The Board will assign a reviewing architect within 2 business days.
+    </p>
+
+    <div style="background:#f4f6f7; border-radius:8px; padding:20px 32px; display:inline-block; margin-bottom:28px;">
+      <div style="font-size:13px; color:#888; margin-bottom:4px;">Your Application ID</div>
+      <div style="font-size:28px; font-weight:700; color:#1a3a5c; letter-spacing:2px;">{{ app_id }}</div>
+      <div style="font-size:12px; color:#aaa; margin-top:6px;">Save this — you'll need it to track your application</div>
+    </div>
+
+    <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      <a href="/status/{{ app_id }}" class="btn btn-primary">Track This Application</a>
+      <a href="/" class="btn btn-secondary">Return Home</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>What Happens Next</h2>
+    <div style="display:grid; grid-template-columns:40px 1fr; gap:8px 16px; align-items:start;">
+      <div style="text-align:center; font-weight:700; color:#1a5276; font-size:18px;">1</div>
+      <div>
+        <strong>Architect Assignment</strong> — The Board will assign a reviewing architect (Melone Architects
+        or Capobianco Group) within 2 business days.
+      </div>
+      <div style="text-align:center; font-weight:700; color:#1a5276; font-size:18px;">2</div>
+      <div>
+        <strong>Architect Review</strong> — The architect will review your plans and may request additional
+        information or clarification. All communication goes through
+        <a href="mailto:alterations@433w34.com">alterations@433w34.com</a>.
+        Respond promptly — delays in responding extend the review timeline.
+      </div>
+      <div style="text-align:center; font-weight:700; color:#1a5276; font-size:18px;">3</div>
+      <div>
+        <strong>Board Approval</strong> — Once the architect recommends approval, the Board votes.
+        You'll receive written notification of the decision.
+      </div>
+      <div style="text-align:center; font-weight:700; color:#1a5276; font-size:18px;">4</div>
+      <div>
+        <strong>Pre-Work Steps</strong> — After approval, you'll send neighbor notification letters,
+        obtain any required permits, and receive your countersigned alteration agreement before work begins.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

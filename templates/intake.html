@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block title %}Submit Alteration Application — 433 W 34th St{% endblock %}
+{% block content %}
+<div class="container">
+  <div class="card">
+    <h2>Submit an Alteration Application</h2>
+    <p style="color:#555; margin-bottom:24px;">
+      Complete all sections below and upload your documents. You'll receive a confirmation email
+      with your Application ID once submitted. This process uses AI-assisted review — your submission
+      will be automatically analyzed and you may receive automated responses from
+      <a href="mailto:alterations@433w34.com">alterations@433w34.com</a>. Questions? Email us there.
+    </p>
+
+    <div style="background:#f4f6f7; border:1px solid #dde; border-radius:6px; padding:16px 20px; margin-bottom:20px;">
+      <strong style="display:block; margin-bottom:10px;">📄 Download the Alteration Package</strong>
+      <p style="font-size:13px; color:#555; margin:0 0 12px;">
+        Complete and sign all applicable addenda before uploading them in Section 5 below.
+      </p>
+      <a href="/static/forms/433-alteration-agreement.pdf" download
+         style="display:inline-block; background:#1a5276; color:white; padding:9px 18px;
+                text-decoration:none; border-radius:4px; font-size:14px;">
+        ↓ 433 W 34th St — Alteration Agreement &amp; Addenda (PDF)
+      </a>
+    </div>
+
+    <div class="alert alert-info" style="margin-bottom:24px;">
+      <strong>Before you submit:</strong> All Phase 1 and Phase 2 documents must be included at the time
+      of submission. Neighbor notification letters are sent <em>after</em> board approval — do not include them here.
+    </div>
+
+    <form method="POST" action="/apply" enctype="multipart/form-data" id="alteration-form">
+
+      <!-- ── Section 1: Shareholder Info ───────────────────────────────── -->
+      <h3>1. Shareholder Information</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Apartment Number <span class="req">*</span></label>
+          <input type="text" name="apartment" required placeholder="e.g. 8D">
+        </div>
+        <div class="form-group">
+          <label>Shareholder Name(s) <span class="req">*</span></label>
+          <input type="text" name="shareholder_name" required placeholder="Full legal name(s) as on lease">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Email Address <span class="req">*</span></label>
+          <input type="email" name="shareholder_email" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" name="shareholder_phone" placeholder="(212) 555-0100">
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ── Section 2: Project Type ────────────────────────────────────── -->
+      <h3>2. Project Type</h3>
+      <div class="form-group">
+        <label>What type of project is this? <span class="req">*</span></label>
+        <select name="project_type" id="project_type" required onchange="updateProjectType()">
+          <option value="">— Select —</option>
+          <option value="decoration">Decoration Project (painting, floor refinishing, like-for-like fixture replacement, carpeting)</option>
+          <option value="alteration">Full Alteration (any structural, plumbing, electrical, kitchen/bath renovation, or layout changes)</option>
+        </select>
+      </div>
+      <div id="decoration-note" class="alert alert-info" style="display:none;">
+        Decoration projects require a $1,000 security deposit (not $2,000). You still need to upload
+        the Simple Form for Apartment Alterations.
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ── Section 3: Scope of Work ──────────────────────────────────── -->
+      <h3>3. Scope of Work</h3>
+      <div class="form-group">
+        <label>Describe the full scope of work <span class="req">*</span>
+          <span class="hint">Be specific — include every room, material, fixture, and system being touched</span>
+        </label>
+        <textarea name="scope_description" required rows="8"
+          placeholder="Example: Full kitchen renovation including removal of existing cabinets, countertops, and sink. Installation of new cabinetry, countertops, and plumbing fixtures. New laminate flooring throughout kitchen with Laticrete waterproofing membrane. All plumbing branch lines to be replaced back to risers. No structural changes. No electrical changes beyond replacing one outlet."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>This project involves: <span class="hint">(check all that apply)</span></label>
+        <div class="checkbox-group">
+          <label class="checkbox-item">
+            <input type="checkbox" name="involves_plumbing" value="yes"> Plumbing work
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="involves_electrical" value="yes"> Electrical work
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="involves_structural" value="yes"> Structural changes (walls, door placements, partitions)
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="involves_kitchen" value="yes"> Kitchen renovation
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="involves_bathroom" value="yes"> Bathroom renovation
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="involves_flooring_refinish" value="yes"> Floor refinishing
+          </label>
+          <label class="checkbox-item">
+            <input type="checkbox" name="involves_flooring_replace" value="yes"> Floor replacement
+          </label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Estimated Total Cost <span class="req">*</span>
+            <span class="hint">Used to calculate security deposit</span>
+          </label>
+          <input type="number" name="estimated_cost" required placeholder="25000" min="0">
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <div class="alert alert-info" id="deposit-calc" style="margin-top:0; font-size:13px;">
+            Security deposit: enter cost above to calculate
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Proposed Start Date <span class="req">*</span></label>
+          <input type="date" name="start_date" required>
+        </div>
+        <div class="form-group">
+          <label>Proposed Completion Date <span class="req">*</span></label>
+          <input type="date" name="end_date" required>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ── Section 4: Contractor Info ────────────────────────────────── -->
+      <h3>4. Contractor Information</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label>General Contractor Name <span class="req">*</span></label>
+          <input type="text" name="gc_name" required placeholder="Contact person name">
+        </div>
+        <div class="form-group">
+          <label>Company Name <span class="req">*</span></label>
+          <input type="text" name="gc_company" required placeholder="Company LLC">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>GC Email <span class="req">*</span></label>
+          <input type="email" name="gc_email" required>
+        </div>
+        <div class="form-group">
+          <label>GC Phone</label>
+          <input type="tel" name="gc_phone">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Licensed Plumber Name <span class="hint">(if applicable)</span></label>
+          <input type="text" name="plumber_name" placeholder="Name + license #">
+        </div>
+        <div class="form-group">
+          <label>Licensed Electrician Name <span class="hint">(if applicable)</span></label>
+          <input type="text" name="electrician_name" placeholder="Name + license #">
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ── Section 5: Documents ───────────────────────────────────────── -->
+      <h3>5. Documents</h3>
+
+      <div id="full-alteration-docs">
+        <p style="font-size:13px; color:#555; margin-bottom:16px;">
+          Upload all documents as PDF files. All Phase 1 and Phase 2 documents are required at submission.
+          You may upload multiple files in each field by holding Shift or Ctrl when selecting.
+        </p>
+
+        <div class="form-group">
+          <label>Plans / Drawings / Sketches <span class="req">*</span>
+            <span class="hint">Architectural drawings, floor plans, or detailed sketches of the work</span>
+          </label>
+          <input type="file" name="doc_plans" accept=".pdf,.dwg,.jpg,.jpeg,.png" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Signed Alteration Agreement (Standard + Addenda A, B, C) <span class="req">*</span></label>
+          <input type="file" name="doc_alteration_agreement" accept=".pdf" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Contractor Information — Addendum D <span class="req">*</span>
+            <span class="hint">Schedule of all contractors, licenses, agreements</span>
+          </label>
+          <input type="file" name="doc_addendum_d" accept=".pdf" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Certificate of Insurance — Addendum E <span class="req">*</span>
+            <span class="hint">COI naming the Corp, its officers/directors/shareholders, Orsid Realty Corp., the Corp's Designated Engineer,
+            and the shareholders below and adjacent to your apartment as additional insureds.
+            Min: $1M GL, $5M umbrella, workers comp.</span>
+          </label>
+          <input type="file" name="doc_insurance" accept=".pdf" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Contractor Indemnity Agreement — Addendum F <span class="req">*</span></label>
+          <input type="file" name="doc_addendum_f" accept=".pdf" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Shareholder Liability Insurance</label>
+          <input type="file" name="doc_shareholder_insurance" accept=".pdf" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>W-9 Form <span class="req">*</span></label>
+          <input type="file" name="doc_w9" accept=".pdf" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Plumber's License <span class="hint">(front and back, if plumbing work involved)</span></label>
+          <input type="file" name="doc_plumber_license" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Electrician's License <span class="hint">(front and back, if electrical work involved)</span></label>
+          <input type="file" name="doc_electrician_license" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>EPA Lead Certification <span class="hint">(required for all contractors)</span></label>
+          <input type="file" name="doc_epa_lead" accept=".pdf" multiple>
+        </div>
+
+        <div class="form-group">
+          <label>Any Additional Documents
+            <span class="hint">(cut or tear sheets for selected appliances, if applicable, etc.)</span>
+          </label>
+          <input type="file" name="doc_other" accept=".pdf,.jpg,.jpeg,.png,.dwg" multiple>
+        </div>
+      </div>
+
+      <div id="decoration-docs" style="display:none;">
+        <div class="form-group">
+          <label>Simple Form for Apartment Alterations <span class="req">*</span></label>
+          <input type="file" name="doc_simple_form" accept=".pdf" multiple>
+        </div>
+        <div class="form-group">
+          <label>Any Supporting Documents</label>
+          <input type="file" name="doc_other" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <!-- ── Section 6: Acknowledgement ────────────────────────────────── -->
+      <h3>6. Acknowledgement</h3>
+      <div class="form-group">
+        <label class="checkbox-item" style="font-size:14px; gap:10px; align-items:flex-start;">
+          <input type="checkbox" name="acknowledge" value="yes" required style="margin-top:3px; width:auto;">
+          <span>I have read the Alteration Agreement and Addendum A (Typical Requirements). I understand that
+          approval can take up to three months, that no work may begin until I receive written board approval,
+          and that I am responsible for all costs associated with the review and any required permits.</span>
+        </label>
+      </div>
+
+      <div style="margin-top:24px;">
+        <button type="submit" class="btn btn-primary" id="submit-btn" style="font-size:16px; padding:14px 32px;">
+          Submit Application
+        </button>
+        <span id="submit-msg" style="display:none; margin-left:16px; color:#555; font-size:14px;">
+          Uploading documents and running AI review — this may take 20–30 seconds…
+        </span>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function updateProjectType() {
+    const val = document.getElementById('project_type').value;
+    document.getElementById('decoration-note').style.display = val === 'decoration' ? 'block' : 'none';
+    document.getElementById('full-alteration-docs').style.display = val === 'decoration' ? 'none' : 'block';
+    document.getElementById('decoration-docs').style.display = val === 'decoration' ? 'block' : 'none';
+  }
+
+  document.querySelector('input[name=estimated_cost]').addEventListener('input', function() {
+    const cost = parseFloat(this.value) || 0;
+    const deposit = Math.max(2000, cost * 0.10);
+    document.getElementById('deposit-calc').textContent =
+      'Security deposit required: $' + deposit.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  });
+
+  document.getElementById('alteration-form').addEventListener('submit', function() {
+    document.getElementById('submit-btn').disabled = true;
+    document.getElementById('submit-btn').textContent = 'Submitting…';
+    document.getElementById('submit-msg').style.display = 'inline';
+  });
+</script>
+{% endblock %}
