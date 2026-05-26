@@ -8,6 +8,7 @@ import json
 BUILDING = os.environ.get("BUILDING_NAME", "433 West 34th Street Owners Corp.")
 ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "alterations@433w34.com")
 BOARD_EMAIL = os.environ.get("BOARD_EMAIL", "board@433w34.com")
+APP_URL = os.environ.get("APP_URL", "https://four33-alteration-app.onrender.com")
 
 
 def _sig():
@@ -88,8 +89,8 @@ is payable by check to <em>433 West 34th Street Owners Corp.</em> Please send it
 Include your Application ID ({app.get('app_id')}) in the memo.</p>
 
 <p>You can track your application status at any time using your Application ID at:<br>
-<strong><a href="https://your-app-url.com/status/{app.get('app_id')}">
-https://your-app-url.com/status/{app.get('app_id')}</a></strong></p>
+<strong><a href="{APP_URL}/status/{app.get('app_id')}">
+{APP_URL}/status/{app.get('app_id')}</a></strong></p>
 
 <p>Please do not hesitate to reach out with any questions.</p>
 """)
@@ -137,7 +138,7 @@ def board_alert_email(app: dict) -> str:
 <p>📁 <a href="{app.get('drive_folder_url', '#')}">View submitted documents in Google Drive</a></p>
 
 <div style="margin-top:24px; text-align:center;">
-  <a href="https://your-app-url.com/admin/application/{app.get('app_id')}"
+  <a href="{APP_URL}/admin/application/{app.get('app_id')}"
      style="background:#1a5276; color:white; padding:12px 24px; text-decoration:none; border-radius:4px; font-size:15px;">
     Assign Architect →
   </a>
