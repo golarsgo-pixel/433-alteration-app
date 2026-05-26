@@ -4,8 +4,25 @@
 <div class="wide-container">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
     <h2 style="font-size:22px; color:#1a3a5c;">Alteration Applications</h2>
-    <div style="font-size:13px; color:#888;">Logged in as {{ session.user_email }}</div>
+    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <form method="POST" action="/admin/check-inbox" style="margin:0;">
+        <button type="submit" class="btn btn-secondary btn-sm"
+                title="Check for unread architect emails and forward to shareholders">
+          📬 Check Architect Inbox
+        </button>
+      </form>
+      <div style="font-size:13px; color:#888;">Logged in as {{ session.user_email }}</div>
+    </div>
   </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'info' if category == 'info' else 'warning' }}"
+             style="margin-bottom:12px;">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
   <!-- Summary tiles -->
   {% set ns = namespace(received=0, assigned=0, review=0, approved=0, wip=0) %}

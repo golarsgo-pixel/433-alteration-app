@@ -40,3 +40,13 @@ def upload_file(folder_id: str, file_storage) -> str:
     media = MediaIoBaseUpload(file_storage.stream, mimetype=file_storage.content_type, resumable=True)
     uploaded = svc.files().create(body=meta, media_body=media, fields="id, webViewLink").execute()
     return uploaded.get("webViewLink", "")
+
+
+def upload_bytes(folder_id: str, filename: str, data: bytes, mime_type: str = "application/octet-stream") -> str:
+    """Upload raw bytes to Drive (e.g. attachment from incoming email). Returns file URL."""
+    import io
+    svc = _service()
+    meta = {"name": filename, "parents": [folder_id]}
+    media = MediaIoBaseUpload(io.BytesIO(data), mimetype=mime_type, resumable=True)
+    uploaded = svc.files().create(body=meta, media_body=media, fields="id, webViewLink").execute()
+    return uploaded.get("webViewLink", "")

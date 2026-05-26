@@ -369,6 +369,41 @@ to inspect your apartment prior to the start of work.</p>
 """)
 
 
+# ── Architect report forwarding ───────────────────────────────────────────────
+
+def architect_review_forward_email(app: dict, cover_note: str, round_label: str = "initial") -> str:
+    """
+    Email sent to shareholder + GC when an architect report arrives.
+    cover_note is Claude's navigational summary. The original PDF is always attached separately.
+    """
+    gc_line = f"<p style='color:#555; font-size:13px;'>cc: {app.get('gc_name')} ({app.get('gc_company')})</p>" if app.get('gc_email') else ""
+
+    if cover_note:
+        body = cover_note
+    else:
+        # Fallback if Claude unavailable
+        body = f"""
+<p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
+{gc_line}
+<p>The reviewing architect has submitted their {round_label} comments on your alteration application
+for Apartment <strong>{app.get('apartment')}</strong>. Please review the attached report carefully —
+it is the official document.</p>
+<p>Please respond to each numbered item in writing, in sequence, and send your response to
+<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> with your Application ID
+<strong>{app.get('app_id')}</strong> in the subject line. Respond within 10 business days.</p>
+"""
+
+    return _wrap(f"""
+{body}
+<hr style="border:none; border-top:1px solid #eee; margin:24px 0;">
+<p style="font-size:12px; color:#aaa;">
+  Application ID: <strong>{app.get('app_id')}</strong> &nbsp;·&nbsp; Apartment {app.get('apartment')}<br>
+  Track your application:
+  <a href="{APP_URL}/status/{app.get('app_id')}">{APP_URL}/status/{app.get('app_id')}</a>
+</p>
+""")
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _security_deposit(estimated_cost_str: str) -> str:

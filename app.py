@@ -27,6 +27,20 @@ BOARD_EMAIL = os.environ["BOARD_EMAIL"]
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"]
 ALTERATIONS_EMAIL = os.environ["ALTERATIONS_EMAIL"]
 
+# ── Background inbox scheduler ────────────────────────────────────────────────
+# Checks alterations@433w34.com for unread architect emails every 5 minutes.
+# Guard prevents double-start in Flask debug mode (which forks two processes).
+if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from services.inbox_service import process_architect_inbox
+        _scheduler = BackgroundScheduler(daemon=True)
+        _scheduler.add_job(process_architect_inbox, "interval", minutes=5, id="inbox_check",
+                           misfire_grace_time=60)
+        _scheduler.start()
+    except Exception as _e:
+        app.logger.warning(f"Inbox scheduler could not start: {_e}")
+
 # ── Public routes ──────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -319,6 +333,26 @@ def admin_neighbor_letters(app_id):
     except Exception as e:
         flash(f"Error: {e}", "error")
     return redirect(url_for("admin_application", app_id=app_id))
+
+
+@app.route("/admin/check-inbox", methods=["POST"])
+@require_board_login
+def admin_check_inbox():
+    """Manually trigger architect inbox processing."""
+    try:
+        from services.inbox_service import process_architect_inbox
+        processed, errors = process_architect_inbox()
+        if processed:
+            for msg in processed:
+                flash(f"✓ {msg}", "success")
+        if errors:
+            for err in errors:
+                flash(f"⚠ {err}", "warning")
+        if not processed and not errors:
+            flash("Inbox checked — no new architect emails found.", "info")
+    except Exception as e:
+        flash(f"Inbox check error: {e}", "error")
+    return redirect(url_for("admin_dashboard"))
 
 
 if __name__ == "__main__":

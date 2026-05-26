@@ -144,6 +144,54 @@ Be specific and practical. If riser_risk is true, the riser_note should explain 
     return result
 
 
+def summarize_architect_report(
+    architect_report_text: str,
+    application_data: dict,
+    round_label: str = "initial",
+) -> str:
+    """
+    Write a brief cover note to accompany the architect's report when forwarding to the shareholder.
+    The original PDF is always attached — this is a navigational aid only, not an official document.
+    Returns HTML.
+    """
+    prompt = f"""
+You are helping the board of 433 West 34th Street Owners Corp. forward an architect's {round_label} review
+report to a shareholder and their contractor.
+
+ARCHITECT'S REPORT TEXT:
+---
+{architect_report_text[:4000]}
+---
+
+Write a brief, professional cover note to accompany the original attached report. The cover note must:
+
+1. Open with one sentence stating that the architect's {round_label} review comments are attached.
+2. List each numbered item from the architect's report as a short bullet — use the architect's own words
+   closely, do not interpret or add advice. Each bullet should start with the item number.
+3. Include a clear instruction block telling the shareholder to:
+   - Review the ATTACHED report — it is the official document, not this summary
+   - Respond to each item in the same numbered sequence as the report
+   - Send their written response to alterations@433w34.com with Application ID
+     {application_data.get('app_id')} in the subject line
+   - Include their contractor's signature/stamp on any technical responses (drawings, specs)
+   - Respond within 10 business days
+
+CRITICAL RULES:
+- Do NOT rewrite, interpret, or add your own opinions to the architect's items
+- Do NOT sign as the architect or imply this is the official report
+- The attached PDF is the authoritative document — say so explicitly
+- Sign as: 433 West 34th Street Board of Directors
+- Return only the email body as HTML (no subject line, no <html>/<body> tags)
+"""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1200,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text.strip()
+
+
 def draft_architect_questions_response(
     architect_report_text: str,
     application_data: dict,

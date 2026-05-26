@@ -1,7 +1,7 @@
 import os
 import json
 import functools
-from flask import session, redirect, url_for, request
+from flask import session, redirect, url_for, request, has_request_context
 from google_auth_oauthlib.flow import Flow
 from google.oauth2.credentials import Credentials
 import google.auth.transport.requests
@@ -132,8 +132,8 @@ def get_credentials():
     # Restore token.json from env var if missing (e.g. after Render redeploy)
     _bootstrap_token_from_env()
 
-    # 1. Try session (board is actively logged in)
-    cred_data = session.get("credentials")
+    # 1. Try session (board is actively logged in) — only available inside a request
+    cred_data = session.get("credentials") if has_request_context() else None
     if cred_data:
         creds = _cred_dict_to_credentials(cred_data)
         # Refresh session with updated token
