@@ -52,8 +52,11 @@ your open-wall period — which avoids mid-project delays. We will be in touch.
 </div>
 """
 
+    gc_line = f"<p style='color:#555; font-size:13px;'>cc: {app.get('gc_name')} ({app.get('gc_company')})</p>" if app.get('gc_email') else ""
+
     return _wrap(f"""
 <p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
+{gc_line}
 
 <p>Thank you for submitting your alteration application. We have received it and will be in touch shortly.</p>
 
@@ -82,10 +85,10 @@ your open-wall period — which avoids mid-project delays. We will be in touch.
   <li>No work may begin until you receive written board approval and have sent neighbor notification letters.</li>
 </ol>
 
-<h3 style="color:#1a5276;">Security Deposit</h3>
+<h3 style="color:#1a5276;">Security Deposit <span style="font-weight:normal; font-size:13px; color:#888;">(For {app.get('shareholder_name', 'Shareholder')})</span></h3>
 <p>A security deposit of <strong>{deposit}</strong> (the greater of $2,000 or 10% of your projected cost)
-is payable by check to <em>433 West 34th Street Owners Corp.</em> Please send it to Orsid Realty Corp.,
-156 West 56th Street, 6th Floor, New York, NY 10019, Attn: Alteration Deposit.
+will be due following board approval. It is payable by check to <em>433 West 34th Street Owners Corp.</em>,
+sent to Orsid Realty Corp., 156 West 56th Street, 6th Floor, New York, NY 10019, Attn: Alteration Deposit.
 Include your Application ID ({app.get('app_id')}) in the memo.</p>
 
 <p>You can track your application status at any time using your Application ID at:<br>
