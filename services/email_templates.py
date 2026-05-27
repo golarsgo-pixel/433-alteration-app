@@ -560,6 +560,91 @@ def board_architect_recommendation_email(app: dict, recommendation: str, cover_n
 """)
 
 
+# ── Shareholder: work in progress ────────────────────────────────────────────
+
+def work_in_progress_email(app: dict) -> str:
+    """Sent to shareholder/GC when board marks work as underway."""
+    return _wrap(f"""
+<p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
+
+<p>This confirms that work on your alteration at Apartment <strong>{app.get('apartment')}</strong>
+has been noted as underway.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px;">{app.get('app_id')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Status</td>
+      <td style="padding:6px 12px; color:#e67e22;"><strong>Work In Progress</strong></td></tr>
+</table>
+
+<p>A reminder of the building's work rules:</p>
+<ul>
+  <li>Work hours: <strong>Monday–Friday, 9:00 AM to 4:30 PM only.</strong> No work on holidays.</li>
+  <li>Plumbing shutdowns must be scheduled 48–72 hours in advance (Tuesdays–Thursdays only).</li>
+  <li>All contractors must remain pre-registered in BuildingLink before arriving at the building.</li>
+  <li>All common areas must be kept clean — debris from your work must be removed same-day.</li>
+</ul>
+
+<p>Please reach out to <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> with any
+questions or if your expected completion date changes.</p>
+""")
+
+
+# ── Shareholder: project sign-off (permits closed) ────────────────────────────
+
+def sign_off_email(app: dict) -> str:
+    """Sent to shareholder/GC when permits are signed off and deposit return is initiated."""
+    return _wrap(f"""
+<p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
+
+<p>Good news — the permit(s) for your alteration at Apartment <strong>{app.get('apartment')}</strong>
+have been signed off and closed.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px;">{app.get('app_id')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Status</td>
+      <td style="padding:6px 12px; color:#27ae60;"><strong>Project Sign-Off Complete</strong></td></tr>
+</table>
+
+<p>We are now initiating the return of your security deposit with Orsid Realty. You should receive
+your deposit check within <strong>4–6 weeks</strong>, provided there are no outstanding issues with
+your alteration agreement or building account.</p>
+
+<p>If you have any questions about the deposit return, please contact Orsid Realty directly or
+reach out to us at <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>.</p>
+
+<p>Thank you for working with the building through this process. We hope you enjoy your
+newly renovated apartment!</p>
+""")
+
+
+# ── Shareholder: project complete (deposit returned) ─────────────────────────
+
+def complete_email(app: dict) -> str:
+    """Sent to shareholder/GC when the board confirms the deposit has been returned — project fully closed."""
+    return _wrap(f"""
+<p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
+
+<p>We are pleased to confirm that your alteration application for Apartment
+<strong>{app.get('apartment')}</strong> is now <strong>fully complete</strong>.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px;">{app.get('app_id')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Status</td>
+      <td style="padding:6px 12px; color:#27ae60;"><strong>Complete</strong></td></tr>
+</table>
+
+<p>Your security deposit has been processed for return by Orsid Realty. If you have not yet
+received your check, please allow a few additional business days. If there are any issues,
+contact Orsid Realty at 212-247-1040 or reach out to us at
+<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>.</p>
+
+<p>Congratulations on completing your renovation. We hope you enjoy your updated home!</p>
+""")
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _security_deposit(estimated_cost_str: str) -> str:

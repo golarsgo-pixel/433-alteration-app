@@ -359,6 +359,89 @@ def admin_approve(app_id):
     return redirect(url_for("admin_application", app_id=app_id))
 
 
+@app.route("/admin/application/<app_id>/start-work", methods=["POST"])
+@require_board_login
+def admin_start_work(app_id):
+    """Mark application as Work In Progress and notify shareholder/GC."""
+    try:
+        application = get_application(app_id)
+        update_application_field(app_id, "status", "Work In Progress")
+        from services.email_templates import work_in_progress_email
+        send_email(
+            to=application["shareholder_email"],
+            cc=application.get("gc_email") or None,
+            subject=f"Work In Progress — Apt {application['apartment']} | {app_id}",
+            body=work_in_progress_email(application),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        log_event(app_id, "Status: Work In Progress",
+                  f"Work commenced. Shareholder notified at {application['shareholder_email']}.",
+                  actor="board", apartment=application.get("apartment", ""))
+        flash("Marked as Work In Progress. Shareholder notified.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("admin_application", app_id=app_id))
+
+
+@app.route("/admin/application/<app_id>/sign-off", methods=["POST"])
+@require_board_login
+def admin_sign_off(app_id):
+    """Mark permits as signed off and initiate deposit return with Orsid."""
+    try:
+        application = get_application(app_id)
+        update_application_field(app_id, "status", "Project Sign-Off")
+        from services.email_templates import sign_off_email
+        send_email(
+            to=application["shareholder_email"],
+            cc=application.get("gc_email") or None,
+            subject=f"Permits Signed Off — Apt {application['apartment']} | {app_id}",
+            body=sign_off_email(application),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        log_event(app_id, "Status: Project Sign-Off",
+                  f"Permits signed off and closed. Deposit return initiated with Orsid. "
+                  f"Shareholder notified at {application['shareholder_email']}.",
+                  actor="board", apartment=application.get("apartment", ""))
+        flash("Marked as Project Sign-Off. Shareholder notified.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("admin_application", app_id=app_id))
+
+
+@app.route("/admin/application/<app_id>/complete", methods=["POST"])
+@require_board_login
+def admin_complete(app_id):
+    """Mark project complete (deposit returned by Orsid). Notifies shareholder and Eddie."""
+    try:
+        application = get_application(app_id)
+        update_application_field(app_id, "status", "Complete")
+        from services.email_templates import complete_email
+        send_email(
+            to=application["shareholder_email"],
+            cc=application.get("gc_email") or None,
+            subject=f"Alteration Complete — Apt {application['apartment']} | {app_id}",
+            body=complete_email(application),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        # FYI to Eddie
+        send_email(
+            to=os.environ["EDDIE_EMAIL"],
+            subject=f"FYI: Alteration Complete — Apt {application['apartment']}",
+            body=(f"<p>Hi Eddie,</p><p>The alteration for <strong>Apt {application['apartment']}</strong> "
+                  f"({application.get('shareholder_name')}) is now complete and closed out. "
+                  f"The security deposit is being returned to the shareholder via Orsid.</p>"),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        log_event(app_id, "Status: Complete",
+                  f"Project complete. Deposit return confirmed. "
+                  f"Shareholder and Eddie notified.",
+                  actor="board", apartment=application.get("apartment", ""))
+        flash("Application marked Complete. Shareholder and Eddie notified.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("admin_application", app_id=app_id))
+
+
 @app.route("/admin/application/<app_id>/neighbor-letters", methods=["POST"])
 @require_board_login
 def admin_neighbor_letters(app_id):

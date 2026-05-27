@@ -4,8 +4,8 @@
 <div class="container">
 
   <!-- Status track -->
-  {% set stages = ['Received', 'Architect Assigned', 'Architect Review', 'Board Approved', 'Work In Progress', 'Complete'] %}
-  {% set status_order = {'Received': 0, 'Architect Assigned': 1, 'Architect Review': 2, 'Awaiting Board Vote': 2, 'Board Approved': 3, 'Work In Progress': 4, 'Complete': 5} %}
+  {% set stages = ['Received', 'Architect Assigned', 'Architect Review', 'Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
+  {% set status_order = {'Received': 0, 'Architect Assigned': 1, 'Architect Review': 2, 'Awaiting Board Vote': 2, 'Board Approved': 3, 'Work In Progress': 4, 'Project Sign-Off': 5, 'Complete': 6} %}
   {% set current_idx = status_order.get(app.status, 0) %}
   <div class="status-track" style="margin-bottom:24px;">
     {% for stage in stages %}
@@ -96,7 +96,7 @@
         <tr>
           <td>Architect review</td>
           <td>
-            {% if app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+            {% if app.status in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
               <span style="color:#27ae60;">✓ Complete</span>
             {% elif app.status == 'Architect Review' %}
               <span style="color:#e67e22;">⏳ In progress — respond promptly to any architect requests</span>
@@ -113,7 +113,7 @@
         <tr>
           <td>Board approval</td>
           <td>
-            {% if app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+            {% if app.status in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
               <span style="color:#27ae60;">✓ Approved</span>
               {% if milestones.get('Status: Board Approved') %}
                 <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Status: Board Approved'] }}</span>
@@ -128,7 +128,7 @@
           <td>
             {% if app.payment_status == 'Received' %}
               <span style="color:#27ae60;">✓ Confirmed received</span>
-            {% elif app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+            {% elif app.status in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
               <span style="color:#e67e22;">⏳ Required — payable to 433 West 34th Street Owners Corp., memo: {{ app.app_id }}. Send to Orsid Realty, 156 W 56th St, 6th Fl.</span>
             {% else %}
               <span style="color:#aaa;">— Confirmed after board approval</span>
@@ -140,7 +140,7 @@
           <td>
             {% if app.neighbor_letters_sent == 'yes' %}
               <span style="color:#27ae60;">✓ Confirmed</span>
-            {% elif app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
+            {% elif app.status in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
               <span style="color:#e67e22;">⚠️ Required — send letters and CC alterations@433w34.com</span>
             {% else %}
               <span style="color:#aaa;">— Sent after board approval</span>
