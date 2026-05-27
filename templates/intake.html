@@ -24,8 +24,8 @@
     </div>
 
     <div class="alert alert-info" style="margin-bottom:24px;">
-      <strong>Before you submit:</strong> All Phase 1 and Phase 2 documents must be included at the time
-      of submission. Neighbor notification letters are sent <em>after</em> board approval — do not include them here.
+      <strong>Before you submit:</strong> All required documents must be included at the time of submission.
+      Neighbor notification letters (Addendum F) are sent <em>after</em> board approval — do not include them here.
     </div>
 
     <form method="POST" action="/apply" enctype="multipart/form-data" id="alteration-form">
@@ -192,7 +192,7 @@
 
       <div id="full-alteration-docs">
         <p style="font-size:13px; color:#555; margin-bottom:16px;">
-          Upload all documents as PDF files. All Phase 1 and Phase 2 documents are required at submission.
+          Upload all documents as PDF files. All documents below are required at submission.
           You may upload multiple files in each field by holding Shift or Ctrl when selecting.
         </p>
 
@@ -204,29 +204,34 @@
         </div>
 
         <div class="form-group">
-          <label>Signed Alteration Agreement (Standard + Addenda A, B, C) <span class="req">*</span></label>
+          <label>Signed Alteration Agreement (Standard + Addenda A &amp; B) <span class="req">*</span>
+            <span class="hint">Standard Agreement, Addendum A (Typical Requirements), and Addendum B (Project Summary) — all signed</span>
+          </label>
           <input type="file" name="doc_alteration_agreement" accept=".pdf" multiple>
         </div>
 
         <div class="form-group">
-          <label>Contractor Information — Addendum D <span class="req">*</span>
-            <span class="hint">Schedule of all contractors, licenses, agreements</span>
+          <label>Contractor Information — Addendum C <span class="req">*</span>
+            <span class="hint">Schedule of all contractors, subcontractors, and suppliers; copies of all contractor/plumber/electrician licenses; copies of contractor agreements</span>
           </label>
-          <input type="file" name="doc_addendum_d" accept=".pdf" multiple>
+          <input type="file" name="doc_addendum_c" accept=".pdf" multiple>
         </div>
 
         <div class="form-group">
-          <label>Certificate of Insurance — Addendum E <span class="req">*</span>
-            <span class="hint">COI naming the Corp, its officers/directors/shareholders, Orsid Realty Corp., the Corp's Designated Engineer,
-            and the shareholders below and adjacent to your apartment as additional insureds.
-            Min: $1M GL, $5M umbrella, workers comp.</span>
+          <label>Certificate of Insurance — Addendum D <span class="req">*</span>
+            <span class="hint">COI from your general contractor naming 433 West 34th Street Owners Corp., its Officers &amp; Directors,
+            Orsid Realty Corp. d/b/a Orsid New York, the Corp's Designated Engineer, and shareholders
+            below and adjacent to your apartment as additional insureds.
+            Min: $1M GL, $5M umbrella, statutory workers comp.</span>
           </label>
           <input type="file" name="doc_insurance" accept=".pdf" multiple>
         </div>
 
         <div class="form-group">
-          <label>Contractor Indemnity Agreement — Addendum F <span class="req">*</span></label>
-          <input type="file" name="doc_addendum_f" accept=".pdf" multiple>
+          <label>Contractor Indemnity Agreement — Addendum E <span class="req">*</span>
+            <span class="hint">Signed by each prime contractor performing work</span>
+          </label>
+          <input type="file" name="doc_addendum_e" accept=".pdf" multiple>
         </div>
 
         <div class="form-group">
@@ -280,9 +285,10 @@
       <div class="form-group">
         <label class="checkbox-item" style="font-size:14px; gap:10px; align-items:flex-start;">
           <input type="checkbox" name="acknowledge" value="yes" required style="margin-top:3px; width:auto;">
-          <span>I have read the Alteration Agreement and Addendum A (Typical Requirements). I understand that
-          approval can take up to three months, that no work may begin until I receive written board approval,
-          and that I am responsible for all costs associated with the review and any required permits.</span>
+          <span>I have read the Alteration Agreement, Addendum A (Typical Requirements), and Addendum B
+          (Project Summary). I understand that approval can take up to three months, that no work may
+          begin until I receive a countersigned alteration agreement from the managing agent, and that
+          I am responsible for all costs associated with the review and any required permits.</span>
         </label>
       </div>
 
