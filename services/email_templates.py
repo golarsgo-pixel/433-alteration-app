@@ -256,15 +256,31 @@ requiring your review.</p>
 # ── Shareholder: board approval ───────────────────────────────────────────────
 
 def approval_email(app: dict) -> str:
+    status_url = f"{APP_URL}/status/{app.get('app_id')}"
+    deposit = _security_deposit(app.get("estimated_cost", "0"))
+
     permit_note = ""
     if app.get("permit_required") == "yes":
-        permit_note = """
+        permit_note = f"""
 <div style="background:#d6eaf8; border-left:4px solid #2980b9; padding:12px 16px; margin:16px 0;">
-<strong>Permits Required:</strong> The reviewing architect has indicated that one or more permits are required
-before work may begin. Your contractor must file for and obtain all required permits and provide copies to
-<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> before commencing work.
+<strong>Permits Required:</strong> The reviewing architect has indicated that one or more permits are
+required before work may begin. Your contractor must file for and obtain all required permits before
+commencing work. Email copies to <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>.
 </div>
-""".format(ALTERATIONS_EMAIL=ALTERATIONS_EMAIL)
+"""
+
+    # Pre-populate the neighbor letter
+    start_display = app.get("start_date") or "[your planned start date]"
+    duration_display = "[estimated duration]"
+    if app.get("start_date") and app.get("end_date"):
+        try:
+            from datetime import datetime as _dt
+            _s = _dt.fromisoformat(app["start_date"])
+            _e = _dt.fromisoformat(app["end_date"])
+            _days = (_e - _s).days
+            duration_display = f"{_days} calendar days"
+        except Exception:
+            pass
 
     return _wrap(f"""
 <p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
@@ -281,28 +297,97 @@ for Apartment <strong>{app.get('apartment')}</strong>.</p>
 
 {permit_note}
 
-<h3>Before Work May Begin — Required Steps</h3>
-<ol>
-  <li><strong>Neighbor Notification Letters:</strong> You must send written notification to the residents
-      of the apartments directly above, below, and on both sides of yours at least 3 business days before
-      work begins. Please CC <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> on those emails
-      (or forward copies to us). A template will be sent to you separately.</li>
-  <li><strong>Permits:</strong> Obtain all required permits and email copies to
+<h3 style="color:#1a5276;">Two Required Steps — Complete These Before Work Begins</h3>
+
+<div style="background:#fffbea; border:2px solid #f0ad4e; border-radius:6px; padding:16px 20px; margin:16px 0;">
+  <strong>Step 1 — Mail Your Security Deposit</strong>
+  <p style="margin:8px 0 4px;">Send a check for <strong>{deposit}</strong> payable to:</p>
+  <p style="margin:4px 0; padding-left:16px;">
+    <em>433 West 34th Street Owners Corp.</em><br>
+    c/o Orsid Realty Corp., 156 West 56th Street, 6th Floor, New York, NY 10019<br>
+    Attn: Alteration Deposit
+  </p>
+  <p style="margin:4px 0;">Write <strong>{app.get('app_id')}</strong> in the memo line.</p>
+  <p style="margin:12px 0 0; font-size:13px; color:#555;">
+    ✅ Once mailed, please confirm at your
+    <a href="{status_url}"><strong>application status page</strong></a>
+    by clicking <strong>"Deposit Check Mailed."</strong>
+  </p>
+</div>
+
+<div style="background:#fffbea; border:2px solid #f0ad4e; border-radius:6px; padding:16px 20px; margin:16px 0;">
+  <strong>Step 2 — Send Neighbor Notification Letters</strong>
+  <p style="margin:8px 0;">You must notify the residents of the apartments directly <strong>above, below,
+  and on both sides</strong> of yours at least <strong>3 business days before work begins.</strong></p>
+  <p style="margin:4px 0; font-size:13px; color:#555;">
+    A pre-populated letter template is included at the bottom of this email.
+    You may email it or print and slip it under each neighbor's door — no CC to us required.
+  </p>
+  <p style="margin:12px 0 0; font-size:13px; color:#555;">
+    ✅ Once letters have been sent, please confirm at your
+    <a href="{status_url}"><strong>application status page</strong></a>
+    by clicking <strong>"Neighbor Letters Sent."</strong>
+  </p>
+</div>
+
+<h3 style="color:#1a5276;">Additional Steps Before Work Begins</h3>
+<ul>
+  <li><strong>Contractor pre-approval:</strong> Your contractors must be registered with BuildingLink
+      before arriving at the building. Contact the super to arrange this.</li>
+  <li><strong>Permits:</strong> Obtain all required permits before work starts. Email copies to
       <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>.</li>
-  <li><strong>Contractor Pre-Approval:</strong> Your contractors must be registered with BuildingLink
-      before arriving at the building. Contractors arriving without pre-approval will be turned away.</li>
-  <li><strong>Security Deposit:</strong> Confirm that your security deposit has been received by Orsid.</li>
-</ol>
+</ul>
 
-<h3>Work Hours</h3>
+<h3 style="color:#1a5276;">Work Hours</h3>
 <p>Monday through Friday only, 9:00 AM to 4:30 PM. No work on holidays.<br>
-Plumbing shutdowns must be requested at least 48–72 hours in advance and are only available
-on Tuesdays, Wednesdays, and Thursdays.</p>
+Plumbing shutdowns must be scheduled 48–72 hours in advance (Tuesdays–Thursdays only).</p>
 
-<p><strong>Do not begin work until you have confirmed all of the above and received
+<p><strong>Do not begin work until both required steps above are complete and you have received
 your countersigned alteration agreement.</strong></p>
 
-<p>Congratulations, and please reach out with any questions.</p>
+<p>Congratulations, and please reach out at <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>
+with any questions.</p>
+
+<hr style="border:none; border-top:2px solid #eee; margin:32px 0 24px;">
+
+<h3 style="color:#1a5276;">Neighbor Notification Letter Template</h3>
+<p style="font-size:13px; color:#555; margin-bottom:16px;">
+  Use this letter for each neighbor. You may email it directly or print and slip under their door.
+  Fill in the <strong>[bracketed]</strong> fields before sending.
+</p>
+
+<div style="background:#f9f9f9; border:1px solid #ddd; border-radius:4px;
+            padding:20px 24px; font-family:Georgia,serif; font-size:14px; line-height:1.7;">
+<p style="margin:0 0 16px;">[Date: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</p>
+
+<p style="margin:0 0 8px;">Dear Neighbor,</p>
+
+<p style="margin:0 0 12px;">Pursuant to the Rules of 433 West 34th Street, I am writing to notify you that on
+approximately <strong>{start_display}</strong>, I will commence renovation work in
+<strong>Apartment {app.get('apartment')}</strong> at 433 West 34th Street.</p>
+
+<p style="margin:0 0 12px;">I will instruct my contractors to exercise care to minimize noise during construction.
+While it is impossible to eliminate all noise, I appreciate your patience during this period.</p>
+
+<p style="margin:0 0 12px;">The renovation is expected to be completed within approximately
+<strong>{duration_display}</strong>.</p>
+
+<p style="margin:0 0 12px;">As required by building rules, please be advised that I will indemnify you for any
+damages you sustain as a result of this renovation. I request that you allow the superintendent
+or my representative to inspect your apartment prior to the start of work.</p>
+
+<p style="margin:0 0 24px;">Please contact me to schedule an inspection at your convenience.</p>
+
+<p style="margin:0 0 4px;">Very truly yours,</p>
+<p style="margin:0 0 4px;"><strong>{app.get('shareholder_name')}</strong></p>
+<p style="margin:0 0 4px;">Apartment {app.get('apartment')}, 433 West 34th Street</p>
+<p style="margin:0 0 16px;">Phone: [&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</p>
+
+<p style="margin:0; font-size:13px; color:#666;">
+cc: 433 West 34th Street Board of Directors
+(<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>)
+</p>
+</div>
 """)
 
 

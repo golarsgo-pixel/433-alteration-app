@@ -200,6 +200,65 @@ def status_detail(app_id):
     return render_template("status_detail.html", app=application, milestones=milestones)
 
 
+# ── Shareholder self-report routes (no login required) ────────────────────────
+
+@app.route("/status/<app_id>/confirm-letters", methods=["POST"])
+def confirm_neighbor_letters(app_id):
+    """Shareholder self-reports that neighbor notification letters have been sent."""
+    try:
+        application = get_application(app_id)
+        if not application:
+            flash("Application not found.", "error")
+            return redirect(url_for("status_detail", app_id=app_id))
+        update_application_field(app_id, "neighbor_letters_sent", "yes")
+        log_event(app_id, "Neighbor Letters: Sent",
+                  "Shareholder confirmed neighbor notification letters have been sent.",
+                  actor="shareholder", apartment=application.get("apartment", ""))
+        send_email(
+            to=ADMIN_EMAIL,
+            subject=f"Neighbor Letters Sent — Apt {application['apartment']} | {app_id}",
+            body=(f"<p>{application.get('shareholder_name')} has confirmed that neighbor notification "
+                  f"letters have been sent for <strong>Apt {application['apartment']}</strong> "
+                  f"({app_id}).</p>"
+                  f"<p><a href='{ALTERATIONS_EMAIL}/admin/application/{app_id}'>View application</a></p>"),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        flash("✓ Neighbor letters confirmed. Thank you!", "success")
+    except Exception as e:
+        app.logger.error(f"confirm-letters error for {app_id}: {e}")
+        flash("Something went wrong — please email us directly.", "error")
+    return redirect(url_for("status_detail", app_id=app_id))
+
+
+@app.route("/status/<app_id>/confirm-deposit", methods=["POST"])
+def confirm_deposit_mailed(app_id):
+    """Shareholder self-reports that the security deposit check has been mailed."""
+    try:
+        application = get_application(app_id)
+        if not application:
+            flash("Application not found.", "error")
+            return redirect(url_for("status_detail", app_id=app_id))
+        update_application_field(app_id, "payment_status", "Mailed")
+        log_event(app_id, "Deposit: Check Mailed",
+                  "Shareholder confirmed deposit check has been mailed to Orsid.",
+                  actor="shareholder", apartment=application.get("apartment", ""))
+        send_email(
+            to=ADMIN_EMAIL,
+            subject=f"Deposit Check Mailed — Apt {application['apartment']} | {app_id}",
+            body=(f"<p>{application.get('shareholder_name')} has confirmed that the security deposit "
+                  f"check has been mailed to Orsid for <strong>Apt {application['apartment']}</strong> "
+                  f"({app_id}).</p>"
+                  f"<p>Update to <strong>Received</strong> once Orsid confirms receipt.</p>"
+                  f"<p><a href='{APP_URL}/admin/application/{app_id}'>View application →</a></p>"),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        flash("✓ Deposit mailing confirmed. Thank you!", "success")
+    except Exception as e:
+        app.logger.error(f"confirm-deposit error for {app_id}: {e}")
+        flash("Something went wrong — please email us directly.", "error")
+    return redirect(url_for("status_detail", app_id=app_id))
+
+
 # ── Auth routes ────────────────────────────────────────────────────────────────
 
 @app.route("/auth/login")

@@ -3,6 +3,18 @@
 {% block content %}
 <div class="container">
 
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  {% for category, message in messages %}
+  <div style="background:{% if category == 'success' %}#d5f5e3{% else %}#fdf2f2{% endif %};
+              border:1px solid {% if category == 'success' %}#27ae60{% else %}#e74c3c{% endif %};
+              border-radius:4px; padding:12px 16px; margin-bottom:16px; color:#222;">
+    {{ message }}
+  </div>
+  {% endfor %}
+  {% endif %}
+  {% endwith %}
+
   <!-- Status track -->
   {% set stages = ['Received', 'Architect Assigned', 'Architect Review', 'Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
   {% set status_order = {'Received': 0, 'Architect Assigned': 1, 'Architect Review': 2, 'Awaiting Board Vote': 2, 'Board Approved': 3, 'Work In Progress': 4, 'Project Sign-Off': 5, 'Complete': 6} %}
@@ -127,11 +139,29 @@
           <td>Security deposit</td>
           <td>
             {% if app.payment_status == 'Received' %}
-              <span style="color:#27ae60;">✓ Confirmed received</span>
+              <span style="color:#27ae60;">✓ Confirmed received by Orsid</span>
+              {% if milestones.get('Deposit: Check Mailed') %}
+                <span style="color:#aaa; font-size:12px; margin-left:8px;">mailed {{ milestones['Deposit: Check Mailed'] }}</span>
+              {% endif %}
+            {% elif app.payment_status == 'Mailed' %}
+              <span style="color:#27ae60;">✓ You confirmed check mailed — awaiting Orsid receipt</span>
             {% elif app.status in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
-              <span style="color:#e67e22;">⏳ Required — payable to 433 West 34th Street Owners Corp., memo: {{ app.app_id }}. Send to Orsid Realty, 156 W 56th St, 6th Fl.</span>
+              <div>
+                <span style="color:#e67e22; display:block; margin-bottom:8px;">
+                  ⏳ Required — payable to 433 West 34th Street Owners Corp., memo: {{ app.app_id }}.
+                  Mail to Orsid Realty, 156 W 56th St, 6th Fl, NY NY 10019.
+                </span>
+                <form method="POST" action="/status/{{ app.app_id }}/confirm-deposit"
+                      onsubmit="return confirm('Confirm that you have mailed the security deposit check to Orsid?')">
+                  <button type="submit"
+                          style="background:#27ae60; color:white; border:none; padding:6px 14px;
+                                 border-radius:4px; cursor:pointer; font-size:13px;">
+                    ✓ Deposit Check Mailed
+                  </button>
+                </form>
+              </div>
             {% else %}
-              <span style="color:#aaa;">— Confirmed after board approval</span>
+              <span style="color:#aaa;">— Required after board approval</span>
             {% endif %}
           </td>
         </tr>
@@ -139,9 +169,25 @@
           <td>Neighbor notification letters</td>
           <td>
             {% if app.neighbor_letters_sent == 'yes' %}
-              <span style="color:#27ae60;">✓ Confirmed</span>
+              <span style="color:#27ae60;">✓ Confirmed sent</span>
+              {% if milestones.get('Neighbor Letters: Sent') %}
+                <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Neighbor Letters: Sent'] }}</span>
+              {% endif %}
             {% elif app.status in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
-              <span style="color:#e67e22;">⚠️ Required — send letters and CC alterations@433w34.com</span>
+              <div>
+                <span style="color:#e67e22; display:block; margin-bottom:8px;">
+                  ⚠️ Required — notify neighbors directly above, below, and on both sides
+                  at least 3 business days before work begins. Template was included in your approval email.
+                </span>
+                <form method="POST" action="/status/{{ app.app_id }}/confirm-letters"
+                      onsubmit="return confirm('Confirm that neighbor notification letters have been sent?')">
+                  <button type="submit"
+                          style="background:#27ae60; color:white; border:none; padding:6px 14px;
+                                 border-radius:4px; cursor:pointer; font-size:13px;">
+                    ✓ Neighbor Letters Sent
+                  </button>
+                </form>
+              </div>
             {% else %}
               <span style="color:#aaa;">— Sent after board approval</span>
             {% endif %}
