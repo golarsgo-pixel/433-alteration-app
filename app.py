@@ -84,7 +84,7 @@ def apply():
         "involves_flooring_refinish": request.form.get("involves_flooring_refinish", "no"),
         "involves_flooring_replace": request.form.get("involves_flooring_replace", "no"),
         "architect_assigned": "",
-        "expediting": "no",
+        "expediting": request.form.get("expediting", "no"),
         "ai_review_summary": "",
         "riser_flag": "no",
         "permit_required": "",

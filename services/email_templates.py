@@ -54,6 +54,16 @@ your open-wall period — which avoids mid-project delays. We will be in touch.
 
     gc_line = f"<p style='color:#555; font-size:13px;'>cc: {app.get('gc_name')} ({app.get('gc_company')})</p>" if app.get('gc_email') else ""
 
+    expediting_note = ""
+    if app.get("expediting") == "yes":
+        expediting_note = """
+<div style="background:#d5f5e3; border-left:4px solid #27ae60; padding:12px 16px; margin:16px 0;">
+<strong>Expedited Review Requested.</strong> Your request for expedited architect review has been noted.
+The assigned architect will confirm availability and their expediting fee before proceeding.
+Expedited review typically takes 4–5 business days from receipt of a complete package.
+</div>
+"""
+
     return _wrap(f"""
 <p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
 {gc_line}
@@ -70,6 +80,8 @@ your open-wall period — which avoids mid-project delays. We will be in touch.
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Status</td>
       <td style="padding:6px 12px;">Received — Under Review</td></tr>
 </table>
+
+{expediting_note}
 
 {ai_section}
 {riser_section}
