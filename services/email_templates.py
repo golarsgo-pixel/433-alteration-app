@@ -340,7 +340,7 @@ for Apartment <strong>{app.get('apartment')}</strong>.</p>
 
 <h3 style="color:#1a5276;">Work Hours</h3>
 <p>Monday through Friday only, 9:00 AM to 4:30 PM. No work on holidays.<br>
-Plumbing shutdowns must be scheduled 48–72 hours in advance (Tuesdays–Thursdays only).</p>
+Plumbing shutdowns must be scheduled 48–72 hours in advance (any weekday, Mon–Fri).</p>
 
 <p><strong>Do not begin work until both required steps above are complete and you have received
 your countersigned alteration agreement.</strong></p>
@@ -384,8 +384,8 @@ or my representative to inspect your apartment prior to the start of work.</p>
 <p style="margin:0 0 16px;">Phone: [&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;]</p>
 
 <p style="margin:0; font-size:13px; color:#666;">
-cc: 433 West 34th Street Board of Directors
-(<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>)
+cc: The Managing Agent's Designated Alteration Coordinator<br>
+Orsid Realty Corp. d/b/a Orsid New York, 156 West 56th Street, 6th Floor, New York, NY 10019
 </p>
 </div>
 """)
@@ -456,13 +456,13 @@ to inspect your apartment prior to the start of work.</p>
 [Your Name]<br>
 [Phone]</p>
 
-<p>cc: 433 West 34th Street Board of Directors
-(<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>)</p>
+<p>cc: The Managing Agent's Designated Alteration Coordinator<br>
+Orsid Realty Corp. d/b/a Orsid New York, 156 West 56th Street, 6th Floor, New York, NY 10019</p>
 
 <hr style="border:none; border-top:1px solid #eee; margin:24px 0;">
 
-<p>Once you have sent the letters, please forward confirmations (or CC us directly) to
-<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> so we can update your application.</p>
+<p>Once you have sent the letters, please confirm on your
+<a href="{APP_URL}/status/[APP_ID]">application status page</a> so we can update your record.</p>
 """)
 
 

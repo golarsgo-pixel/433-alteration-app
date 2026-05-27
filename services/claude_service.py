@@ -19,13 +19,18 @@ PROHIBITED ITEMS (automatic flags):
 - Concealed-tank toilets, offset flange toilets
 - Non-Energy Star appliances
 - Lead paint, asbestos-containing materials
-- Wood studs (except door openings), combustible framing
+- Wood studs (except door openings) and combustible framing in wall/partition construction
+  (plywood subfloor is permitted and governed by flooring replacement requirements)
 - Satellite dish antennas (unless inside apt)
 - Kilns, humidifiers supplying steam/water into ductwork
-- No structural cuts, no facade penetrations, no load-bearing wall removal
+- No structural cuts, no load-bearing wall removal
 - No cutting/channeling of floor slab
 - No jackhammer use without written approval
 - Wet-over-dry installations prohibited
+- Venting of any appliance or equipment into shared building shafts, riser chases, pipe chases, or architectural voids
+- Exterior facade penetrations for venting/mechanical without specific written Board approval
+- Vented dryer exhaust under any circumstances — condensing (ventless) dryers only
+- Smart lock or electronic entry door hardware without prior Board approval (entry door is Corp property)
 
 RISER RISK: Flag as TRUE if the scope includes ANY of:
 - Kitchen renovation (plumbing, new sink, relocation of fixtures)
@@ -44,32 +49,60 @@ PERMIT LIKELY REQUIRED if scope includes:
 - Converting tub to shower
 - Any plumbing or electrical work (permit may be required)
 - Gas piping changes (DOB permit required, no self-certification)
+- Electrical service upgrades or any dedicated circuit of 50 amps or greater (requires Board + Engineer approval)
 
 DOCUMENT COMPLETENESS CHECKLIST:
 For Decoration Projects: Simple form + $1,000 deposit
-For Full Alterations — Phase 1 required at submission:
+For Full Alterations — all submitted together:
   - Standard Alteration Agreement (signed)
   - Addendum A: Typical Requirements (acknowledged)
   - Addendum B: Project Summary (scope, dates, plans/sketches)
-  - Addendum C: Assumption of Alteration Agreement
+  - Addendum C: Contractor Information + licenses
+  - Addendum D: Contractor Insurance (COI naming Corp, Orsid Realty Corp. d/b/a Orsid New York,
+    and adjacent neighbors as additional insureds — $1M bodily injury/property damage, $5M umbrella, workers comp)
+  - Addendum E: Contractor Indemnity Agreement
+  - Addendum F: Neighbor Notification Letter (sent AFTER approval, not at submission)
   - Security deposit: greater of $2,000 or 10% of projected cost
   - Shareholder liability insurance
-Phase 2 (also required at submission per current policy):
-  - Addendum D: Contractor Information + licenses
-  - Addendum E: Contractor Insurance (COI naming Corp, Orsid Realty Corp., and adjacent neighbors as additional insureds)
-    - $1M bodily injury/property damage, $5M umbrella, workers comp
-  - Addendum F: Contractor Indemnity Agreement
   - W-9 form
   - EPA Lead certification for contractors
   - If plumbing: plumber's license
   - If electrical: electrician's license
-Neighbor letters are sent AFTER approval, not at submission.
-DOB permits are obtained AFTER board approval.
+DOB permits are obtained AFTER board approval, before work begins.
+Note: "Assumption of Alteration Agreement" (formerly Addendum C) has been eliminated from the current agreement.
 
-WASHER/DRYER POLICY: Only allowed when replacing a kitchen AND removing a sink & dishwasher. Condensing/self-venting type only. No wall penetrations or window exhaust.
+COI NAMED INSUREDS: 433 West 34th Street Owners Corp., its Officers & Directors, Orsid Realty Corp.
+d/b/a Orsid New York (managing agent), the Corporation's Designated Engineer, and the shareholder(s)
+in apartments below and adjacent to the work apartment. Terra Holdings is NOT a required named insured.
 
-WORK HOURS: Monday–Friday only, 9am–4:30pm. No work on holidays.
-PLUMBING SHUTDOWNS: Tuesdays, Wednesdays, Thursdays only. 48–72 hour advance notice required.
+WASHER/DRYER POLICY: Prohibited as a standalone alteration. May be considered by the Board ONLY in
+connection with a full kitchen renovation or the combination of two or more apartments where a new
+kitchen is being created. Must be located in the kitchen only. Requires a $5,000 non-refundable license
+fee (returned only if Board denies the application) in addition to standard security deposit. Condensing
+(ventless) dryer only — no vented exhaust permitted under any circumstances. Detailed technical
+requirements apply (stainless steel overflow pan with auto-shutoff, braided stainless supply hoses, etc.).
+Flag any washer/dryer mention and note that standalone w/d alteration is not permitted.
+
+MOLD / MOISTURE: If work involves opening walls, floors, or ceilings near a bathroom, kitchen, laundry
+area, or plumbing riser, and mold or water damage is discovered, work must STOP in the affected area
+and the shareholder must notify the Managing Agent and Superintendent in writing before proceeding.
+This is a material obligation — flag scope that involves significant opening of wet-area walls.
+
+BUILDINGLINK: Upon approval, the Managing Agent will register approved contractors in the building's
+BuildingLink system. No contractor may enter the building for work-related purposes until confirmed as
+registered. Shareholder must notify Managing Agent of any roster changes promptly.
+
+SMART LOCKS / IoT DEVICES: The apartment entry (hallway) door is owned by the Corporation.
+Any modification to entry door hardware — including smart locks, electronic locks, keypads — requires
+prior written Board approval and must retain a physical key override compatible with the master key.
+Self-contained IoT devices entirely inside the apartment and not connected to building systems are
+generally permitted without Board approval (undersink sensors, motion sensors, in-kind smart thermostat).
+Any IoT device connecting to building electrical, HVAC, plumbing, intercom, or network infrastructure
+requires prior written Board approval.
+
+WORK HOURS: Monday–Friday only, 9am–4:30pm. All workers must leave by 4:30pm. No work on holidays.
+PLUMBING SHUTDOWNS: Any weekday (Monday–Friday). 48–72 hour advance written notice required.
+Requests must specify riser(s) affected, estimated duration, and licensed plumber responsible.
 """
 
 
