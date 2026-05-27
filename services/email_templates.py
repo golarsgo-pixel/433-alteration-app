@@ -383,6 +383,31 @@ to inspect your apartment prior to the start of work.</p>
 
 # ── Architect report forwarding ───────────────────────────────────────────────
 
+def _reply_instructions(app: dict, audience: str = "shareholder") -> str:
+    """
+    Prominent reply instruction box included in every forwarding email.
+    audience: "shareholder" or "architect"
+    """
+    if audience == "shareholder":
+        action = "respond to the architect's comments"
+    else:
+        action = "submit further comments or your approval recommendation"
+    return f"""
+<div style="background:#e8f4fd; border:2px solid #2980b9; border-radius:6px;
+            padding:16px 20px; margin:20px 0;">
+  <strong>📧 How to respond:</strong> Reply directly to this email — your Application ID
+  <strong>{app.get('app_id')}</strong> is already in the subject line and will route your
+  response automatically. Alternatively, email
+  <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> with
+  <strong>{app.get('app_id')}</strong> anywhere in the subject line.<br>
+  <span style="font-size:13px; color:#555; margin-top:6px; display:block;">
+    All correspondence is logged and stored. Do not email the architect or board directly —
+    use this address to keep your application record complete.
+  </span>
+</div>
+"""
+
+
 def architect_review_forward_email(app: dict, cover_note: str, round_label: str = "initial") -> str:
     """
     Email sent to shareholder + GC when an architect report arrives.
@@ -400,19 +425,51 @@ def architect_review_forward_email(app: dict, cover_note: str, round_label: str 
 <p>The reviewing architect has submitted their {round_label} comments on your alteration application
 for Apartment <strong>{app.get('apartment')}</strong>. Please review the attached report carefully —
 it is the official document.</p>
-<p>Please respond to each numbered item in writing, in sequence, and send your response to
-<a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> with your Application ID
-<strong>{app.get('app_id')}</strong> in the subject line. Respond within 10 business days.</p>
+<p>Please respond to each numbered item in writing, in sequence, within 10 business days.</p>
 """
 
     return _wrap(f"""
 {body}
+{_reply_instructions(app, audience="shareholder")}
 <hr style="border:none; border-top:1px solid #eee; margin:24px 0;">
 <p style="font-size:12px; color:#aaa;">
   Application ID: <strong>{app.get('app_id')}</strong> &nbsp;·&nbsp; Apartment {app.get('apartment')}<br>
   Track your application:
   <a href="{APP_URL}/status/{app.get('app_id')}">{APP_URL}/status/{app.get('app_id')}</a>
 </p>
+""")
+
+
+def shareholder_response_forward_email(app: dict, sender_name: str, attachment_count: int) -> str:
+    """
+    Email sent to the architect when a shareholder/GC response is received.
+    The original attachments are forwarded separately.
+    """
+    att_note = f"{attachment_count} document(s) attached." if attachment_count else "No attachments — response was text only."
+    return _wrap(f"""
+<p>Dear {app.get('architect_assigned', 'Architect')} team,</p>
+
+<p>A response has been received from the shareholder/contractor for
+<strong>Apartment {app.get('apartment')}</strong> regarding application
+<strong>{app.get('app_id')}</strong>.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px;">{app.get('app_id')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px;">{app.get('apartment')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:6px 12px;">{app.get('shareholder_name')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Sent by</td>
+      <td style="padding:6px 12px;">{sender_name}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Documents</td>
+      <td style="padding:6px 12px;">{att_note}</td></tr>
+</table>
+
+<p>The shareholder's response and any attached documents are included with this email.
+All documents have also been added to the application's Drive folder.</p>
+
+{_reply_instructions(app, audience="architect")}
 """)
 
 

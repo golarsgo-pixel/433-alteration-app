@@ -59,27 +59,28 @@ def send_email(
 
 # ── Reading ───────────────────────────────────────────────────────────────────
 
-def get_unread_architect_emails() -> list:
-    """Return list of unread message IDs sent from known architect addresses."""
-    addrs = []
+def get_architect_addresses() -> set:
+    """Return the set of known architect email addresses (lowercase)."""
+    addrs = set()
     for addr in os.environ.get("MELONE_EMAILS", "").split(","):
         if addr.strip():
-            addrs.append(addr.strip())
+            addrs.add(addr.strip().lower())
     cap = os.environ.get("CAPOBIANCO_EMAIL", "").strip()
     if cap:
-        addrs.append(cap)
+        addrs.add(cap.lower())
+    return addrs
 
-    if not addrs:
-        return []
 
+def get_unread_application_emails() -> list:
+    """
+    Return all unread message IDs whose subject contains an ALT- App ID.
+    This covers both architect reports and shareholder/GC responses.
+    """
     svc = _svc()
-    results = []
-    for addr in addrs:
-        resp = svc.users().messages().list(
-            userId="me", q=f"from:{addr} is:unread", maxResults=20
-        ).execute()
-        results.extend(resp.get("messages", []))
-    return results
+    resp = svc.users().messages().list(
+        userId="me", q='subject:"ALT-" is:unread', maxResults=50
+    ).execute()
+    return resp.get("messages", [])
 
 
 def get_email_with_attachments(msg_id: str) -> dict:
