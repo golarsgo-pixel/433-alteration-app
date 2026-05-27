@@ -85,45 +85,93 @@ def _upload_attachments_to_drive(app: dict, attachments: list):
 def _process_architect_to_shareholder(email: dict, app: dict):
     from services.gmail_service import send_email, mark_as_read
     from services.sheets_service import update_application_field, log_event
-    from services.claude_service import summarize_architect_report
-    from services.email_templates import architect_review_forward_email
+    from services.claude_service import summarize_architect_report, classify_architect_report
+    from services.email_templates import architect_review_forward_email, board_architect_recommendation_email
 
     sender = email["from"]
     app_id = app["app_id"]
-    round_label = "initial" if app.get("status") != "Architect Review" else "follow-up"
-
     report_text = email["body_text"] or _strip_html(email["body_html"])
 
+    # Step 1: Classify — is this a final recommendation or mid-review?
+    classification = {"is_final": False, "recommendation": "more_info"}
+    try:
+        classification = classify_architect_report(report_text, app_id)
+    except Exception as e:
+        logger.error(f"Claude classification failed for {app_id}: {e}")
+
+    is_final = classification.get("is_final", False)
+    recommendation = classification.get("recommendation", "more_info")
+
+    # Step 2: Determine round label for cover note and subject line
+    _round_label_map = {
+        "final": "Final Recommendation",
+        "follow-up": "Follow-Up Comments",
+        "initial": "Initial Comments",
+    }
+    if is_final:
+        round_label = "final"
+    elif app.get("status") != "Architect Review":
+        round_label = "initial"
+    else:
+        round_label = "follow-up"
+    round_display = _round_label_map[round_label]
+
+    # Step 3: Claude cover note (navigational aid — original PDF always attached)
     cover_note = None
     try:
         cover_note = summarize_architect_report(report_text, app, round_label)
     except Exception as e:
         logger.error(f"Claude summary failed for {app_id}: {e}")
 
+    # Step 4: Forward to shareholder/GC (always, regardless of whether final)
     body = architect_review_forward_email(app, cover_note, round_label)
     cc_parts = [p for p in [app.get("gc_email"), ADMIN_EMAIL] if p]
 
     send_email(
         to=app["shareholder_email"],
         cc=",".join(cc_parts) if cc_parts else None,
-        subject=f"Architect Review Comments ({round_label.title()}) — Apt {app['apartment']} | {app_id}",
+        subject=f"Architect Review ({round_display}) — Apt {app['apartment']} | {app_id}",
         body=body,
         reply_to=ALTERATIONS_EMAIL,
         attachments=email["attachments"] or None,
     )
 
     _upload_attachments_to_drive(app, email["attachments"])
-    update_application_field(app_id, "status", "Architect Review")
     mark_as_read(email["id"])
 
     att_names = ", ".join(a["filename"] for a in email["attachments"]) if email["attachments"] else "no attachments"
-    log_event(app_id, f"Status: Architect Review ({round_label.title()})",
-              f"Report received from {sender}. {att_names}. "
-              f"Forwarded to {app['shareholder_email']}"
-              + (f" and {app.get('gc_email')}" if app.get('gc_email') else "") + ".",
-              actor="architect", apartment=app.get("apartment", ""))
 
-    return f"Apt {app['apartment']} ({app_id}) — {round_label} architect report forwarded to shareholder"
+    if is_final:
+        # Final recommendation: alert the board, advance status to "Awaiting Board Vote"
+        try:
+            board_body = board_architect_recommendation_email(app, recommendation, cover_note)
+            send_email(
+                to=ADMIN_EMAIL,
+                subject=f"[ACTION REQUIRED] Architect Review Complete — Apt {app['apartment']} | {app_id}",
+                body=board_body,
+                reply_to=ALTERATIONS_EMAIL,
+                attachments=email["attachments"] or None,
+            )
+        except Exception as e:
+            logger.error(f"Board alert send failed for {app_id}: {e}")
+
+        update_application_field(app_id, "status", "Awaiting Board Vote")
+        log_event(app_id, "Status: Awaiting Board Vote",
+                  f"Architect final recommendation ({recommendation}) received from {sender}. "
+                  f"{att_names}. Forwarded to shareholder and board alerted.",
+                  actor="architect", apartment=app.get("apartment", ""))
+        return (f"Apt {app['apartment']} ({app_id}) — architect final recommendation "
+                f"({recommendation}); board alerted, status → Awaiting Board Vote")
+
+    else:
+        # Mid-review: keep status as "Architect Review"
+        update_application_field(app_id, "status", "Architect Review")
+        log_event(app_id, f"Status: Architect Review ({round_display})",
+                  f"Report received from {sender}. {att_names}. "
+                  f"Forwarded to {app['shareholder_email']}"
+                  + (f" and {app.get('gc_email')}" if app.get('gc_email') else "") + ".",
+                  actor="architect", apartment=app.get("apartment", ""))
+        return f"Apt {app['apartment']} ({app_id}) — {round_label} architect report forwarded to shareholder"
 
 
 # ── Direction 2: Shareholder/GC → Architect ──────────────────────────────────

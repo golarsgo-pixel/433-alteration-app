@@ -473,6 +473,93 @@ All documents have also been added to the application's Drive folder.</p>
 """)
 
 
+# ── Board: architect final recommendation alert ───────────────────────────────
+
+def board_architect_recommendation_email(app: dict, recommendation: str, cover_note: str) -> str:
+    """
+    Alert sent to the board when Claude detects a final architect recommendation.
+    Includes a direct link to the admin panel to review and vote.
+    """
+    rec_map = {
+        "approve": (
+            "✅ Recommends Approval",
+            "#27ae60",
+            "#f0fff4",
+            "The architect has completed their review and recommends board approval.",
+        ),
+        "approve_with_conditions": (
+            "⚠️ Recommends Approval with Conditions",
+            "#e67e22",
+            "#fef9ec",
+            "The architect recommends approval subject to conditions stated in their report. "
+            "Please review carefully before voting.",
+        ),
+        "deny": (
+            "❌ Recommends Denial",
+            "#e74c3c",
+            "#fdf2f2",
+            "The architect recommends the board <strong>deny</strong> this application. "
+            "Please review their report before responding to the shareholder.",
+        ),
+    }
+    label, color, bg, context = rec_map.get(
+        recommendation,
+        ("Review Complete", "#555", "#f9f9f9", "The architect has completed their review.")
+    )
+    admin_url = f"{APP_URL}/admin/application/{app.get('app_id')}"
+
+    summary_section = ""
+    if cover_note:
+        summary_section = f"""
+<h3>Architect Report Summary</h3>
+<div style="background:#f9f9f9; border-left:3px solid #ccc; padding:12px 16px;
+            margin:16px 0; font-size:13px; color:#444;">
+{cover_note}
+</div>
+<p style="font-size:12px; color:#aaa; margin-top:0;">
+  The original architect report PDF is attached to this email and filed in the Drive folder.
+</p>
+"""
+
+    return _wrap(f"""
+<h2>Architect Review Complete — Action Required</h2>
+
+<div style="background:{bg}; border:2px solid {color}; border-radius:6px;
+            padding:16px 20px; margin:20px 0;">
+  <strong style="color:{color}; font-size:16px;">{label}</strong><br>
+  <span style="color:#444; margin-top:6px; display:block;">{context}</span>
+</div>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px;">{app.get('app_id')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px;">{app.get('apartment')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:6px 12px;">{app.get('shareholder_name')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Reviewing Architect</td>
+      <td style="padding:6px 12px;">{app.get('architect_assigned', '—')}</td></tr>
+</table>
+
+{summary_section}
+
+<p>📁 <a href="{app.get('drive_folder_url', '#')}">View all application documents in Drive</a></p>
+
+<div style="margin-top:24px; text-align:center;">
+  <a href="{admin_url}"
+     style="background:#1a5276; color:white; padding:14px 28px; text-decoration:none;
+            border-radius:4px; font-size:15px; display:inline-block;">
+    Review &amp; Vote →
+  </a>
+</div>
+
+<p style="font-size:12px; color:#aaa; margin-top:24px;">
+  This alert was generated automatically. If the architect's email was misclassified as a final
+  recommendation, no action is needed — the status can be corrected in the admin panel.
+</p>
+""")
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _security_deposit(estimated_cost_str: str) -> str:

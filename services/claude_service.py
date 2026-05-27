@@ -192,6 +192,61 @@ CRITICAL RULES:
     return response.content[0].text.strip()
 
 
+def classify_architect_report(report_text: str, app_id: str) -> dict:
+    """
+    Determine whether an architect email is a final recommendation (review complete)
+    or an intermediate round of comments/requests.
+
+    Returns {"is_final": bool, "recommendation": str}
+    recommendation values: "approve" | "approve_with_conditions" | "deny" | "more_info"
+
+    Conservative: only marks is_final=True when clearly concluded.
+    """
+    prompt = f"""You are helping manage a co-op alteration review process at 433 West 34th Street, NYC.
+
+An architect has sent an email regarding application {app_id}. Classify this email:
+
+1. Is this a FINAL recommendation — the architect has CONCLUDED their review and is formally
+   recommending approval, approval with conditions, or denial?
+   OR is this INTERMEDIATE — the architect is still working through the review (requesting
+   more documents, asking questions, sending partial comments, acknowledging receipt)?
+
+2. If final, what is the recommendation?
+
+EMAIL TEXT:
+---
+{report_text[:3000]}
+---
+
+Respond in JSON only — no other text:
+{{"is_final": true or false, "recommendation": "approve" | "approve_with_conditions" | "deny" | "more_info"}}
+
+Definitions:
+- "approve": architect explicitly recommends approval or states no objections
+- "approve_with_conditions": architect recommends approval but requires certain items be addressed first
+- "deny": architect recommends the board not approve the application
+- "more_info": architect is still in review (asking questions, requesting documents, sending comments for response)
+
+Be CONSERVATIVE — only set is_final=true if you are confident the architect has concluded
+their review. When in doubt, use is_final=false and recommendation="more_info"."""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=100,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        return {"is_final": False, "recommendation": "more_info"}
+
+
 def draft_architect_questions_response(
     architect_report_text: str,
     application_data: dict,
