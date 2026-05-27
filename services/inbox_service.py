@@ -128,6 +128,16 @@ def process_architect_inbox():
             update_application_field(app_id, "status", "Architect Review")
             mark_as_read(msg_id)
 
+            # Log the event
+            from services.sheets_service import log_event
+            att_names = ", ".join(a["filename"] for a in email["attachments"]) if email["attachments"] else "no attachments"
+            log_event(app_id, f"Status: Architect Review ({round_label.title()})",
+                      f"Architect report received from {sender}. {att_names}. "
+                      f"Forwarded to {app['shareholder_email']}"
+                      + (f" and {app.get('gc_email')}" if app.get('gc_email') else "")
+                      + f". Uploaded to Drive.",
+                      actor="architect", apartment=app.get("apartment", ""))
+
             summary = f"Apt {app['apartment']} ({app_id}) — {round_label} review comments forwarded to {app['shareholder_email']}"
             processed.append(summary)
             logger.info(f"Processed architect email for {app_id}")

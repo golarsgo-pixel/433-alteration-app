@@ -9,7 +9,7 @@ from flask import (
 from dotenv import load_dotenv
 from services.google_auth import require_board_login, get_auth_url, handle_callback
 from services.drive_service import create_application_folder, upload_file
-from services.sheets_service import append_application, update_application_field, get_all_applications, get_application
+from services.sheets_service import append_application, update_application_field, get_all_applications, get_application, log_event
 from services.gmail_service import send_email
 from services.claude_service import review_application
 from services.email_templates import (
@@ -118,6 +118,12 @@ def apply():
     # Save to Google Sheets
     try:
         append_application(data)
+        log_event(app_id, "Status: Received",
+                  f"Application submitted by {data['shareholder_name']} for Apt {data['apartment']}. "
+                  f"Project: {data.get('project_type','').title()}. "
+                  f"{'Expedited review requested. ' if data.get('expediting') == 'yes' else ''}"
+                  f"Riser flag: {data.get('riser_flag','no')}.",
+                  actor="shareholder", apartment=data["apartment"])
     except Exception as e:
         app.logger.error(f"Sheets write failed: {e}")
 
@@ -147,6 +153,10 @@ def apply():
             body=eddie_new_submission_email(data),
             from_alias=ALTERATIONS_EMAIL,
         )
+        log_event(app_id, "Email: Receipt sent",
+                  f"Receipt sent to {data['shareholder_email']}"
+                  + (f", CC {data['gc_email']}" if data.get('gc_email') else "") + ". Board alerted.",
+                  apartment=data["apartment"])
     except Exception as e:
         app.logger.error(f"Email send failed: {e}")
 
@@ -179,7 +189,15 @@ def status_detail(app_id):
         application = None
     if not application:
         return render_template("status.html", error="Application not found. Check your ID and try again.")
-    return render_template("status_detail.html", app=application)
+    from services.sheets_service import get_application_log
+    # Build a simple milestone dict for the shareholder view: {event_prefix: timestamp}
+    milestones = {}
+    for entry in get_application_log(app_id):
+        event = entry.get("event", "")
+        ts = entry.get("timestamp", "")[:10]  # date only
+        if event.startswith("Status:") and event not in milestones:
+            milestones[event] = ts
+    return render_template("status_detail.html", app=application, milestones=milestones)
 
 
 # ── Auth routes ────────────────────────────────────────────────────────────────
@@ -226,7 +244,9 @@ def admin_application(app_id):
     if not application:
         flash("Application not found.", "error")
         return redirect(url_for("admin_dashboard"))
-    return render_template("admin/application.html", app=application)
+    from services.sheets_service import get_application_log
+    activity_log = get_application_log(app_id)
+    return render_template("admin/application.html", app=application, activity_log=activity_log)
 
 
 @app.route("/admin/application/<app_id>/assign", methods=["POST"])
@@ -253,6 +273,9 @@ def admin_assign(app_id):
             from_alias=ALTERATIONS_EMAIL,
             reply_to=ALTERATIONS_EMAIL,
         )
+        log_event(app_id, "Status: Architect Assigned",
+                  f"Assigned to {architect}. {'Expedited review requested.' if expediting == 'yes' else 'Standard review.'} Package emailed to {to_email}.",
+                  actor="board", apartment=application.get("apartment", ""))
         flash(f"Application assigned to {architect} and package sent.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
@@ -273,7 +296,22 @@ def admin_update(app_id):
         flash("Invalid field.", "error")
         return redirect(url_for("admin_application", app_id=app_id))
     try:
+        application = get_application(app_id)
         update_application_field(app_id, field, value)
+        # Log meaningful field changes
+        label_map = {
+            "status": "Status",
+            "payment_status": "Payment",
+            "neighbor_letters_sent": "Neighbor Letters",
+            "permit_required": "Permit Required",
+            "permits": "Permit Details",
+            "riser_flag": "Riser Flag",
+            "expediting": "Expedited Review",
+        }
+        if field != "notes" and field in label_map:
+            log_event(app_id, f"Updated: {label_map[field]}",
+                      f"Set to: {value}",
+                      actor="board", apartment=application.get("apartment", "") if application else "")
         flash("Updated.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
@@ -311,6 +349,10 @@ def admin_approve(app_id):
                     body=approval_email(application),
                     from_alias=ALTERATIONS_EMAIL,
                 )
+        log_event(app_id, "Status: Board Approved",
+                  f"Board approved. Approval notification sent to {application['shareholder_email']}"
+                  + (f" and {application.get('gc_email')}" if application.get('gc_email') else "") + ". Eddie and Orsid notified.",
+                  actor="board", apartment=application.get("apartment", ""))
         flash("Application approved. Notifications sent.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")

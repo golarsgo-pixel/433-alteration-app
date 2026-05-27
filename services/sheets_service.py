@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime
 from typing import Optional
 from googleapiclient.discovery import build
 from services.google_auth import get_credentials
@@ -112,3 +113,67 @@ def update_application_field(app_id: str, field: str, value: str):
                 body={"values": [[str(value)]]},
             ).execute()
             return
+
+
+# ── Activity log (separate "Log" tab) ─────────────────────────────────────────
+
+LOG_COLUMNS = ["timestamp", "app_id", "apartment", "event", "detail", "actor"]
+
+def _ensure_log_tab():
+    """Create the Log tab and header row if they don't exist."""
+    svc = _service()
+    meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
+    sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
+
+    if "Log" not in sheet_names:
+        svc.spreadsheets().batchUpdate(
+            spreadsheetId=SHEET_ID,
+            body={"requests": [{"addSheet": {"properties": {"title": "Log"}}}]},
+        ).execute()
+        svc.spreadsheets().values().update(
+            spreadsheetId=SHEET_ID,
+            range="Log!A1",
+            valueInputOption="RAW",
+            body={"values": [LOG_COLUMNS]},
+        ).execute()
+
+
+def log_event(app_id: str, event: str, detail: str = "", actor: str = "system", apartment: str = ""):
+    """
+    Append one row to the Log tab.
+    event:  short label  e.g. "Status: Architect Assigned", "Email: Receipt sent"
+    detail: free text    e.g. "Assigned to Melone", "Forwarded to apt8d@email.com"
+    actor:  who did it   e.g. "system", "board", "architect"
+    """
+    try:
+        _ensure_log_tab()
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        row = [timestamp, app_id, apartment, event, detail, actor]
+        _service().spreadsheets().values().append(
+            spreadsheetId=SHEET_ID,
+            range="Log!A1",
+            valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
+            body={"values": [row]},
+        ).execute()
+    except Exception as e:
+        # Log failures should never break the main flow
+        import logging
+        logging.getLogger(__name__).error(f"log_event failed: {e}")
+
+
+def get_application_log(app_id: str) -> list:
+    """Return all log entries for a given application, oldest first."""
+    try:
+        svc = _service()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SHEET_ID, range="Log"
+        ).execute()
+        rows = result.get("values", [])
+        if len(rows) < 2:
+            return []
+        header = rows[0]
+        entries = [dict(zip(header, row + [""] * (len(header) - len(row)))) for row in rows[1:]]
+        return [e for e in entries if e.get("app_id") == app_id]
+    except Exception:
+        return []

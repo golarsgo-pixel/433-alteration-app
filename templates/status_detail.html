@@ -71,13 +71,23 @@
       <tbody>
         <tr>
           <td>Application received</td>
-          <td><span style="color:#27ae60;">✓ Complete</span></td>
+          <td>
+            <span style="color:#27ae60;">✓ Complete</span>
+            {% if milestones.get('Status: Received') %}
+              <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Status: Received'] }}</span>
+            {% else %}
+              <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ app.submitted_at[:10] }}</span>
+            {% endif %}
+          </td>
         </tr>
         <tr>
           <td>Architect assigned</td>
           <td>
             {% if app.architect_assigned %}
               <span style="color:#27ae60;">✓ {{ app.architect_assigned }}</span>
+              {% if milestones.get('Status: Architect Assigned') %}
+                <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Status: Architect Assigned'] }}</span>
+              {% endif %}
             {% else %}
               <span style="color:#aaa;">⏳ Awaiting board assignment</span>
             {% endif %}
@@ -88,8 +98,13 @@
           <td>
             {% if app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
               <span style="color:#27ae60;">✓ Complete</span>
-            {% elif app.architect_assigned %}
+            {% elif app.status == 'Architect Review' %}
               <span style="color:#e67e22;">⏳ In progress — respond promptly to any architect requests</span>
+              {% if milestones.get('Status: Architect Review (Initial)') %}
+                <span style="color:#aaa; font-size:12px; margin-left:8px;">since {{ milestones['Status: Architect Review (Initial)'] }}</span>
+              {% endif %}
+            {% elif app.architect_assigned %}
+              <span style="color:#e67e22;">⏳ Package sent — awaiting architect comments</span>
             {% else %}
               <span style="color:#aaa;">— Not started</span>
             {% endif %}
@@ -100,6 +115,9 @@
           <td>
             {% if app.status in ['Board Approved', 'Work In Progress', 'Complete'] %}
               <span style="color:#27ae60;">✓ Approved</span>
+              {% if milestones.get('Status: Board Approved') %}
+                <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Status: Board Approved'] }}</span>
+              {% endif %}
             {% else %}
               <span style="color:#aaa;">— Pending architect recommendation</span>
             {% endif %}

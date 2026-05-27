@@ -94,6 +94,30 @@
         </form>
       </div>
 
+      <!-- Activity Log -->
+      <div class="card">
+        <h2>Activity Log</h2>
+        {% if activity_log %}
+        <table class="data-table" style="font-size:13px;">
+          <thead>
+            <tr><th style="width:130px;">When</th><th style="width:200px;">Event</th><th>Detail</th><th style="width:70px;">By</th></tr>
+          </thead>
+          <tbody>
+            {% for entry in activity_log %}
+            <tr>
+              <td style="color:#888; white-space:nowrap;">{{ entry.timestamp }}</td>
+              <td><strong>{{ entry.event }}</strong></td>
+              <td style="color:#555;">{{ entry.detail }}</td>
+              <td style="color:#aaa; text-transform:capitalize;">{{ entry.actor }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p style="color:#aaa; font-size:13px;">No activity logged yet.</p>
+        {% endif %}
+      </div>
+
     </div>
 
     <!-- RIGHT COLUMN: Actions -->
