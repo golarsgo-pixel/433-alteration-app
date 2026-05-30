@@ -1,6 +1,7 @@
 import os
 import json
 import anthropic
+from services.ai_usage_logger import log_usage
 
 client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
 
@@ -164,6 +165,7 @@ Be specific and practical. If riser_risk is true, the riser_note should explain 
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
     )
+    log_usage("review_application", response.model, response.usage.input_tokens, response.usage.output_tokens)
 
     text = response.content[0].text.strip()
     # Strip markdown code fences if present
@@ -222,6 +224,7 @@ CRITICAL RULES:
         max_tokens=1200,
         messages=[{"role": "user", "content": prompt}],
     )
+    log_usage("summarize_architect_report", response.model, response.usage.input_tokens, response.usage.output_tokens)
     return response.content[0].text.strip()
 
 
@@ -268,6 +271,7 @@ their review. When in doubt, use is_final=false and recommendation="more_info"."
         max_tokens=100,
         messages=[{"role": "user", "content": prompt}],
     )
+    log_usage("classify_architect_report", response.model, response.usage.input_tokens, response.usage.output_tokens)
     text = response.content[0].text.strip()
     if text.startswith("```"):
         text = text.split("```")[1]
@@ -317,4 +321,5 @@ Return just the email body as plain HTML (no subject line).
         max_tokens=1200,
         messages=[{"role": "user", "content": prompt}],
     )
+    log_usage("draft_architect_questions_response", response.model, response.usage.input_tokens, response.usage.output_tokens)
     return response.content[0].text.strip()
