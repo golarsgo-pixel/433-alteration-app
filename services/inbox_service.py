@@ -290,6 +290,14 @@ def _process_shareholder_to_architect(email: dict, app: dict):
         change_summary = scope_detection.get("summary", "")
         additions = scope_detection.get("additions", [])
         expansion_count = sum(1 for a in additions if a.get("type") == "expansion")
+
+        if scope_detection.get("board_alert"):
+            try:
+                from services.sheets_service import update_application_field
+                update_application_field(app_id, "scope_change_flag", "yes")
+            except Exception as e:
+                logger.error(f"Failed to set scope_change_flag for {app_id}: {e}")
+
         log_event(
             app_id,
             "Scope Change Detected" if scope_detection.get("board_alert") else "Revised Scope Submitted",

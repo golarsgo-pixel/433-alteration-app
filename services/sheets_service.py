@@ -19,7 +19,7 @@ COLUMNS = [
     "involves_kitchen", "involves_bathroom",
     "involves_flooring_refinish", "involves_flooring_replace",
     "architect_assigned", "expediting",
-    "ai_review_summary", "riser_flag",
+    "ai_review_summary", "riser_flag", "scope_change_flag",
     "permit_required", "permits",
     "payment_status", "neighbor_letters_sent",
     "drive_folder_url", "notes",

@@ -83,6 +83,9 @@
           </td>
           <td style="font-size:13px;">{{ a.architect_assigned or '—' }}</td>
           <td>
+            {% if a.scope_change_flag == 'yes' %}
+              <span title="Scope change detected — board review needed" style="cursor:default;">🔴</span>
+            {% endif %}
             {% if a.riser_flag == 'yes' %}
               <span title="Riser assessment needed" style="cursor:default;">⚠️</span>
             {% endif %}
