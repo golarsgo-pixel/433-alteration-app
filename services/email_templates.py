@@ -863,7 +863,8 @@ maintenance account at your earliest convenience:</p>
   </tr>
 </table>
 
-<p>Please confirm once this has been processed. Thank you.</p>
+<p>We are copying the shareholder on this notice so they are aware of the charge.
+Please confirm once this has been processed. Thank you.</p>
 {_sig()}
 """)
 

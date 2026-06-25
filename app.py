@@ -532,7 +532,8 @@ def admin_bill_fee(app_id):
         return redirect(url_for("admin_dashboard"))
 
     ORSID_FEE_TO = "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com"
-    ORSID_FEE_CC = "cmcgrath@orsidny.com"
+    shareholder_email = app_data.get("shareholder_email", "")
+    ORSID_FEE_CC = ",".join(filter(None, ["cmcgrath@orsidny.com", shareholder_email]))
 
     try:
         body = application_fee_billing_email(app_data)
@@ -541,7 +542,7 @@ def admin_bill_fee(app_id):
             cc=ORSID_FEE_CC,
             subject=f"Alteration Review Fee — Apt {app_data['apartment']} | {app_id}",
             body=body,
-            reply_to=ALTERATIONS_EMAIL,
+            reply_to=BOARD_EMAIL,
         )
         update_application_field(app_id, "application_fee_status", "Billed")
         log_event(app_id, "Application Fee Billed",
