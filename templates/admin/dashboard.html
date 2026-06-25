@@ -49,7 +49,12 @@
     {% endfor %}
   </div>
 
-  {% if applications %}
+  {% set show_withdrawn = request.args.get('withdrawn') == '1' %}
+  {% set active_apps = applications | selectattr('status', '!=', 'Withdrawn') | list %}
+  {% set withdrawn_apps = applications | selectattr('status', 'equalto', 'Withdrawn') | list %}
+  {% set display_apps = applications if show_withdrawn else active_apps %}
+
+  {% if display_apps %}
   <div class="card" style="padding:0; overflow:hidden;">
     <table class="data-table">
       <thead>
@@ -66,8 +71,8 @@
         </tr>
       </thead>
       <tbody>
-        {% for a in applications | sort(attribute='submitted_at', reverse=True) %}
-        <tr>
+        {% for a in display_apps | sort(attribute='submitted_at', reverse=True) %}
+        <tr style="{{ 'opacity:0.5;' if a.status == 'Withdrawn' else '' }}">
           <td style="font-family:monospace; font-size:12px;">{{ a.app_id }}</td>
           <td><strong>{{ a.apartment }}</strong></td>
           <td>
@@ -104,6 +109,18 @@
   {% else %}
   <div class="card" style="text-align:center; padding:48px; color:#888;">
     No applications yet. They'll appear here when shareholders submit.
+  </div>
+  {% endif %}
+
+  {% if withdrawn_apps %}
+  <div style="margin-top:12px; text-align:center; font-size:13px; color:#888;">
+    {% if show_withdrawn %}
+      <a href="/admin" style="color:#888;">Hide withdrawn applications</a>
+    {% else %}
+      <a href="/admin?withdrawn=1" style="color:#888;">
+        Show {{ withdrawn_apps | length }} withdrawn application{{ 's' if withdrawn_apps | length != 1 else '' }}
+      </a>
+    {% endif %}
   </div>
   {% endif %}
 </div>

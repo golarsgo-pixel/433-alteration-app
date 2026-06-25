@@ -382,6 +382,26 @@
       </div>
       {% endif %}
 
+      <!-- Withdraw / Cancel -->
+      {% if app.status not in ['Withdrawn', 'Complete'] %}
+      <div class="card" style="border:1px solid #e5e7e9;">
+        <h2 style="color:#717d7e;">Withdraw / Cancel Application</h2>
+        <form method="POST" action="/admin/application/{{ app.app_id }}/withdraw"
+              onsubmit="return confirm('Mark this application as Withdrawn? This cannot be undone.')">
+          <div class="form-group">
+            <label style="font-size:13px; color:#555;">Reason <span style="font-weight:400;">(optional — appended to Board Notes)</span></label>
+            <textarea name="reason" rows="2"
+                      placeholder="e.g. Board did not approve. / Shareholder decided not to proceed."
+                      style="font-size:13px;"></textarea>
+          </div>
+          <button type="submit" class="btn btn-sm"
+                  style="background:#717d7e; color:white; border:none; cursor:pointer;">
+            Mark Withdrawn / Canceled
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
     </div>
   </div>
 </div>
