@@ -519,6 +519,41 @@ def admin_neighbor_letters(app_id):
     return redirect(url_for("admin_application", app_id=app_id))
 
 
+@app.route("/admin/application/<app_id>/bill-fee", methods=["POST"])
+@require_board_login
+def admin_bill_fee(app_id):
+    from services.sheets_service import get_application, update_application_field, log_event
+    from services.gmail_service import send_email
+    from services.email_templates import application_fee_billing_email, APPLICATION_FEE
+
+    app_data = get_application(app_id)
+    if not app_data:
+        flash("Application not found.", "error")
+        return redirect(url_for("admin_dashboard"))
+
+    ORSID_FEE_TO = "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com"
+    ORSID_FEE_CC = "cmcgrath@orsidny.com"
+
+    try:
+        body = application_fee_billing_email(app_data)
+        send_email(
+            to=ORSID_FEE_TO,
+            cc=ORSID_FEE_CC,
+            subject=f"Alteration Review Fee — Apt {app_data['apartment']} | {app_id}",
+            body=body,
+            reply_to=ALTERATIONS_EMAIL,
+        )
+        update_application_field(app_id, "application_fee_status", "Billed")
+        log_event(app_id, "Application Fee Billed",
+                  f"${APPLICATION_FEE} billing request sent to Orsid (Molly Minter, Enriko Dodaj, Livia Behri).",
+                  actor="board", apartment=app_data.get("apartment", ""))
+        flash(f"✓ Fee billing request sent to Orsid for Apt {app_data['apartment']}.", "success")
+    except Exception as e:
+        flash(f"Error sending fee billing email: {e}", "error")
+
+    return redirect(url_for("admin_application", app_id=app_id))
+
+
 @app.route("/admin/check-inbox", methods=["POST"])
 @require_board_login
 def admin_check_inbox():

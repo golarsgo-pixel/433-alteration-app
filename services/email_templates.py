@@ -823,6 +823,51 @@ def scope_change_alert_email(app: dict, detection: dict, submitted_by: str, file
 """)
 
 
+# ── Orsid: application fee billing ───────────────────────────────────────────
+
+APPLICATION_FEE = 250
+
+def application_fee_billing_email(app: dict) -> str:
+    app_id = app["app_id"]
+    admin_url = f"{APP_URL}/admin/application/{app_id}"
+    return _wrap(f"""
+<p>Dear Molly, Enriko, and Livia,</p>
+
+<p>Please bill the following alteration review application fee to the shareholder's
+maintenance account at your earliest convenience:</p>
+
+<table style="border-collapse:collapse; width:100%; max-width:500px; margin:20px 0;">
+  <tr style="background:#f4f6f7;">
+    <td style="padding:10px 14px; font-weight:600; width:40%;">Property</td>
+    <td style="padding:10px 14px;">433 West 34th Street</td>
+  </tr>
+  <tr>
+    <td style="padding:10px 14px; font-weight:600;">Apartment</td>
+    <td style="padding:10px 14px;">{app['apartment']}</td>
+  </tr>
+  <tr style="background:#f4f6f7;">
+    <td style="padding:10px 14px; font-weight:600;">Shareholder</td>
+    <td style="padding:10px 14px;">{app['shareholder_name']}</td>
+  </tr>
+  <tr>
+    <td style="padding:10px 14px; font-weight:600;">Application ID</td>
+    <td style="padding:10px 14px; font-family:monospace;">{app_id}</td>
+  </tr>
+  <tr style="background:#f4f6f7;">
+    <td style="padding:10px 14px; font-weight:600;">Fee Amount</td>
+    <td style="padding:10px 14px; font-weight:700; color:#1a5276;">${APPLICATION_FEE:,}</td>
+  </tr>
+  <tr>
+    <td style="padding:10px 14px; font-weight:600;">Description</td>
+    <td style="padding:10px 14px;">Alteration Review Application Fee</td>
+  </tr>
+</table>
+
+<p>Please confirm once this has been processed. Thank you.</p>
+{_sig()}
+""")
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _security_deposit(estimated_cost_str: str) -> str:

@@ -21,7 +21,7 @@ COLUMNS = [
     "architect_assigned", "expediting",
     "ai_review_summary", "riser_flag", "scope_change_flag",
     "permit_required", "permits",
-    "payment_status", "neighbor_letters_sent",
+    "payment_status", "application_fee_status", "neighbor_letters_sent",
     "drive_folder_url", "notes",
 ]
 
