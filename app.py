@@ -539,5 +539,37 @@ def admin_check_inbox():
     return redirect(url_for("admin_dashboard"))
 
 
+@app.route("/admin/token")
+@require_board_login
+def admin_show_token():
+    """Show the current token.json so it can be copied into GOOGLE_TOKEN_JSON on Render."""
+    import json as _json
+    from services.google_auth import TOKEN_FILE
+    try:
+        with open(TOKEN_FILE) as f:
+            token_data = _json.load(f)
+        token_str = _json.dumps(token_data)
+    except FileNotFoundError:
+        token_str = None
+
+    return f"""
+    <html><head><title>Token — Admin</title>
+    <style>body{{font-family:sans-serif;max-width:900px;margin:40px auto;padding:0 20px;}}
+    textarea{{width:100%;height:200px;font-family:monospace;font-size:12px;}}
+    .note{{background:#fff3cd;border:1px solid #ffc107;padding:12px 16px;border-radius:6px;margin-bottom:20px;}}
+    </style></head><body>
+    <p><a href="/admin">← Back to Admin</a></p>
+    <h2>Current Google Token</h2>
+    <div class="note">
+      <strong>After re-authorizing:</strong> copy the token below, go to
+      <strong>Render → Environment → GOOGLE_TOKEN_JSON</strong> and paste it in.
+      This ensures the new scopes survive the next redeploy.
+    </div>
+    {"<textarea onclick='this.select()'>"+token_str+"</textarea>" if token_str
+     else "<p style='color:red;'>No token.json found on disk — re-authorize first at <a href='/auth/login'>/auth/login</a>.</p>"}
+    </body></html>
+    """
+
+
 if __name__ == "__main__":
     app.run(debug=True)
