@@ -284,6 +284,106 @@ their review. When in doubt, use is_final=false and recommendation="more_info"."
         return {"is_final": False, "recommendation": "more_info"}
 
 
+def detect_scope_change(
+    original_scope: str,
+    new_document_text: str,
+    app_id: str,
+) -> dict:
+    """
+    Compare a contractor's revised scope document to the original approved scope.
+    Classifies additions as genuine expansion vs. building-required compliance.
+
+    Returns:
+    {
+        "is_scope_document": bool,
+        "has_material_additions": bool,
+        "additions": [{"item": str, "type": "expansion"|"compliance"|"minor"}],
+        "removals": [str],
+        "board_alert": bool,
+        "summary": str
+    }
+    """
+    prompt = f"""You are reviewing a contractor document submitted during an ongoing architect review
+for an alteration at 433 West 34th Street, NYC co-op (application {app_id}).
+
+ORIGINAL APPROVED SCOPE (what the board and architect are reviewing):
+---
+{original_scope[:3000]}
+---
+
+NEW DOCUMENT SUBMITTED BY CONTRACTOR/SHAREHOLDER:
+---
+{new_document_text[:3000]}
+---
+
+BUILDING COMPLIANCE REQUIREMENTS (items the architect routinely requires that are NOT new scope):
+- Branch plumbing replacement back to building risers (copper supply lines, waste/vent lines)
+- New shutoff valves at fixtures
+- Water hammer arrestors and check valves
+- Waterproofing membrane (Laticrete 9235) turned up 4 inches
+- Stone saddle at wet/dry transitions
+- Subfloor + soundproofing underlayment when flooring is replaced
+- Licensed plumber and electrician confirmations
+
+TASK:
+1. First, determine: is this new document a revised scope of work (SOW), or is it a text
+   response to architect comments with no new scope items? A SOW typically lists work items
+   (install, remove, replace, etc.). A response letter quotes architect items and confirms them.
+
+2. If it IS a scope document, compare it to the original and identify:
+   - ADDITIONS: work items present in the new doc but NOT in the original
+   - REMOVALS: work items in the original that are absent or explicitly removed in the new doc
+
+3. For each addition, classify as:
+   - "expansion": new work not in original scope AND not a building compliance requirement
+     (e.g., adding a new appliance, extending work to a new room, adding a new fixture type)
+   - "compliance": additions that match building requirements listed above — the architect
+     likely required these, they do not represent new work the board needs to re-evaluate
+   - "minor": small additions unlikely to affect building systems or require re-review
+     (e.g., replacing a closet door, painting a room)
+
+4. Set board_alert=true if ANY "expansion" additions are found. These require the board to
+   decide whether the expanded scope is acceptable and whether a new review round is needed.
+
+Respond in JSON only:
+{{
+  "is_scope_document": true or false,
+  "has_material_additions": true or false,
+  "additions": [
+    {{"item": "description of added item", "type": "expansion"|"compliance"|"minor"}}
+  ],
+  "removals": ["description of removed item"],
+  "board_alert": true or false,
+  "summary": "2-3 sentence plain-English assessment of what changed and why it matters"
+}}
+
+If is_scope_document is false, return additions=[], removals=[], has_material_additions=false,
+board_alert=false, and a summary explaining this appears to be a response letter, not a scope revision."""
+
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=800,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        return {
+            "is_scope_document": False,
+            "has_material_additions": False,
+            "additions": [],
+            "removals": [],
+            "board_alert": False,
+            "summary": "Scope change detection failed — manual review recommended.",
+        }
+
+
 def draft_architect_questions_response(
     architect_report_text: str,
     application_data: dict,

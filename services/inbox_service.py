@@ -20,10 +20,15 @@ Emails with no recognisable App ID are left unread for manual review.
 """
 
 import re
+import io
 import os
 import logging
 
 logger = logging.getLogger(__name__)
+
+_SCOPE_FILENAME_RE = re.compile(
+    r'(scope|sow|s\.o\.w|revised|updated|work.?order)', re.IGNORECASE
+)
 
 _APP_ID_RE = re.compile(r'ALT-\d{6}-[A-Z0-9]{5}')
 _FOLDER_ID_RE = re.compile(r'/folders/([a-zA-Z0-9_-]+)')
@@ -174,12 +179,53 @@ def _process_architect_to_shareholder(email: dict, app: dict):
         return f"Apt {app['apartment']} ({app_id}) — {round_label} architect report forwarded to shareholder"
 
 
+# ── PDF text extraction ───────────────────────────────────────────────────────
+
+def _extract_pdf_text(data: bytes) -> str:
+    """Extract plain text from a PDF attachment (bytes). Returns '' on failure."""
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(data))
+        return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    except Exception as e:
+        logger.debug(f"PDF text extraction failed: {e}")
+        return ""
+
+
+def _find_scope_attachment(attachments: list) -> tuple[str, str]:
+    """
+    Look for a scope-of-work document in the attachment list.
+    Returns (filename, extracted_text) for the first match, or ("", "") if none found.
+    Strategy: prefer filename signals; fall back to scanning PDF text for SOW language.
+    """
+    # Pass 1: filename signals
+    for att in attachments:
+        if att.get("mime_type") != "application/pdf":
+            continue
+        if _SCOPE_FILENAME_RE.search(att.get("filename", "")):
+            text = _extract_pdf_text(att["data"])
+            if text:
+                return att["filename"], text
+
+    # Pass 2: scan all PDFs for SOW content markers
+    sow_markers = ("scope of work", "scope of works", "reconstruction:", "removal:", "install ")
+    for att in attachments:
+        if att.get("mime_type") != "application/pdf":
+            continue
+        text = _extract_pdf_text(att["data"])
+        text_lower = text.lower()
+        if sum(1 for m in sow_markers if m in text_lower) >= 2:
+            return att["filename"], text
+
+    return "", ""
+
+
 # ── Direction 2: Shareholder/GC → Architect ──────────────────────────────────
 
 def _process_shareholder_to_architect(email: dict, app: dict):
     from services.gmail_service import send_email, mark_as_read
     from services.sheets_service import log_event
-    from services.email_templates import shareholder_response_forward_email
+    from services.email_templates import shareholder_response_forward_email, scope_change_alert_email
 
     sender = email["from"]
     sender_email = _extract_sender_email(sender)
@@ -191,6 +237,20 @@ def _process_shareholder_to_architect(email: dict, app: dict):
         logger.warning(f"No architect email found for {app_id} — cannot forward response")
         return None
 
+    # ── Scope change detection ────────────────────────────────────────────────
+    scope_detection = None
+    if email["attachments"]:
+        scope_filename, scope_text = _find_scope_attachment(email["attachments"])
+        if scope_filename and scope_text:
+            try:
+                from services.claude_service import detect_scope_change
+                original_scope = app.get("scope_description", "")
+                scope_detection = detect_scope_change(original_scope, scope_text, app_id)
+                logger.info(f"Scope detection for {app_id}: is_scope={scope_detection.get('is_scope_document')}, board_alert={scope_detection.get('board_alert')}")
+            except Exception as e:
+                logger.error(f"Scope change detection failed for {app_id}: {e}")
+
+    # ── Forward to architect (always) ─────────────────────────────────────────
     body = shareholder_response_forward_email(app, sender, len(email["attachments"]))
 
     send_email(
@@ -206,11 +266,44 @@ def _process_shareholder_to_architect(email: dict, app: dict):
     mark_as_read(email["id"])
 
     att_names = ", ".join(a["filename"] for a in email["attachments"]) if email["attachments"] else "no attachments"
+
+    # ── Board alert if material scope additions found ──────────────────────────
+    if scope_detection and scope_detection.get("is_scope_document"):
+        has_additions = scope_detection.get("has_material_additions") or bool(scope_detection.get("additions"))
+        if has_additions and ADMIN_EMAIL:
+            try:
+                alert_body = scope_change_alert_email(app, scope_detection, sender_email, att_names)
+                alert_subject = (
+                    f"[SCOPE CHANGE] Revised scope submitted — Apt {app['apartment']} | {app_id}"
+                    if scope_detection.get("board_alert")
+                    else f"Revised scope submitted — Apt {app['apartment']} | {app_id}"
+                )
+                send_email(
+                    to=ADMIN_EMAIL,
+                    subject=alert_subject,
+                    body=alert_body,
+                    reply_to=ALTERATIONS_EMAIL,
+                )
+            except Exception as e:
+                logger.error(f"Scope change alert send failed for {app_id}: {e}")
+
+        change_summary = scope_detection.get("summary", "")
+        additions = scope_detection.get("additions", [])
+        expansion_count = sum(1 for a in additions if a.get("type") == "expansion")
+        log_event(
+            app_id,
+            "Scope Change Detected" if scope_detection.get("board_alert") else "Revised Scope Submitted",
+            f"Revised scope document '{scope_filename}' submitted by {sender_email}. "
+            f"{expansion_count} expansion addition(s) flagged. {change_summary}",
+            actor="shareholder", apartment=app.get("apartment", ""),
+        )
+
     log_event(app_id, "Response: Shareholder → Architect",
               f"Response from {sender_email} forwarded to {architect_name} ({architect_email}). {att_names}.",
               actor="shareholder", apartment=app.get("apartment", ""))
 
-    return f"Apt {app['apartment']} ({app_id}) — shareholder response forwarded to {architect_name}"
+    scope_note = " (scope change detected)" if scope_detection and scope_detection.get("board_alert") else ""
+    return f"Apt {app['apartment']} ({app_id}) — shareholder response forwarded to {architect_name}{scope_note}"
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────

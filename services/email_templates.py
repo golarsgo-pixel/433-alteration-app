@@ -730,6 +730,99 @@ contact Orsid Realty at 212-247-1040 or reach out to us at
 """)
 
 
+# ── Board: scope change alert ────────────────────────────────────────────────
+
+def scope_change_alert_email(app: dict, detection: dict, submitted_by: str, filenames: str) -> str:
+    """
+    Alert sent to board when a revised scope document contains material additions.
+    detection is the dict returned by claude_service.detect_scope_change().
+    """
+    app_id = app.get("app_id")
+    admin_url = f"{APP_URL}/admin/application/{app_id}"
+
+    additions = detection.get("additions", [])
+    removals = detection.get("removals", [])
+
+    expansion_rows = ""
+    compliance_rows = ""
+    minor_rows = ""
+    for a in additions:
+        item = a.get("item", "")
+        t = a.get("type", "minor")
+        if t == "expansion":
+            expansion_rows += f'<tr><td style="padding:6px 10px;">🔴 {item}</td><td style="padding:6px 10px; color:#c0392b;">Scope expansion — board review needed</td></tr>'
+        elif t == "compliance":
+            compliance_rows += f'<tr><td style="padding:6px 10px;">🟡 {item}</td><td style="padding:6px 10px; color:#7d6608;">Building-required compliance</td></tr>'
+        else:
+            minor_rows += f'<tr><td style="padding:6px 10px;">⚪ {item}</td><td style="padding:6px 10px; color:#555;">Minor addition</td></tr>'
+
+    additions_table = ""
+    if expansion_rows or compliance_rows or minor_rows:
+        additions_table = f"""
+<h3 style="margin-top:20px;">Changes in revised scope</h3>
+<table style="border-collapse:collapse; width:100%; font-size:13px; margin-bottom:16px;">
+  <thead>
+    <tr style="background:#f4f6f7;">
+      <th style="padding:6px 10px; text-align:left;">Item</th>
+      <th style="padding:6px 10px; text-align:left;">Classification</th>
+    </tr>
+  </thead>
+  <tbody>
+    {expansion_rows}{compliance_rows}{minor_rows}
+  </tbody>
+</table>
+"""
+
+    removals_section = ""
+    if removals:
+        removal_items = "".join(f"<li>{r}</li>" for r in removals)
+        removals_section = f"""
+<h3 style="margin-top:16px;">Items removed from original scope</h3>
+<ul style="font-size:13px; color:#555;">{removal_items}</ul>
+"""
+
+    return _wrap(f"""
+<div style="background:#fdf2f2; border-left:4px solid #c0392b; padding:12px 16px; margin-bottom:20px;">
+  <strong>⚠️ Scope Change Detected — Board Review Required</strong><br>
+  <span style="font-size:13px;">A revised scope document for Apt <strong>{app.get('apartment')}</strong>
+  contains additions that were not part of the original approved scope.</span>
+</div>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px;">{app_id}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px;">{app.get('apartment')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:6px 12px;">{app.get('shareholder_name')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Submitted by</td>
+      <td style="padding:6px 12px;">{submitted_by}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Documents</td>
+      <td style="padding:6px 12px;">{filenames}</td></tr>
+</table>
+
+<h3>AI Assessment</h3>
+<p style="color:#444;">{detection.get('summary', '')}</p>
+
+{additions_table}
+{removals_section}
+
+<p style="font-size:13px; color:#555; margin-top:16px;">
+  The revised scope has been forwarded to the architect as a normal response.
+  If the additions above require re-review, the architect will raise them in their next report.
+  No action needed unless you want to discuss with the shareholder proactively.
+</p>
+
+<div style="margin-top:20px; text-align:center;">
+  <a href="{admin_url}"
+     style="background:#1a5276; color:white; padding:12px 24px; text-decoration:none;
+            border-radius:4px; font-size:15px;">
+    View Application →
+  </a>
+</div>
+""")
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _security_deposit(estimated_cost_str: str) -> str:
