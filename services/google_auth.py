@@ -39,7 +39,6 @@ def get_auth_url():
     auth_url, state = flow.authorization_url(
         access_type="offline",
         prompt="consent",
-        include_granted_scopes="true",
     )
     session["oauth_state"] = state
     return auth_url
@@ -52,7 +51,7 @@ def _cred_dict_to_credentials(cred_data: dict) -> Credentials:
         token_uri=cred_data.get("token_uri", "https://oauth2.googleapis.com/token"),
         client_id=cred_data.get("client_id"),
         client_secret=cred_data.get("client_secret"),
-        scopes=cred_data.get("scopes", SCOPES),
+        scopes=SCOPES,
     )
     if creds.expired and creds.refresh_token:
         creds.refresh(google.auth.transport.requests.Request())
@@ -67,7 +66,7 @@ def _save_token(creds: Credentials):
         "token_uri": creds.token_uri,
         "client_id": creds.client_id,
         "client_secret": creds.client_secret,
-        "scopes": list(creds.scopes or SCOPES),
+        "scopes": SCOPES,
     }
     with open(TOKEN_FILE, "w") as f:
         json.dump(data, f)
@@ -96,7 +95,7 @@ def handle_callback(args):
             "token_uri": creds.token_uri,
             "client_id": creds.client_id,
             "client_secret": creds.client_secret,
-            "scopes": list(creds.scopes or SCOPES),
+            "scopes": SCOPES,
         }
         session["user_email"] = email
         session["credentials"] = cred_data
@@ -143,7 +142,7 @@ def get_credentials():
             "token_uri": creds.token_uri,
             "client_id": creds.client_id,
             "client_secret": creds.client_secret,
-            "scopes": list(creds.scopes or SCOPES),
+            "scopes": SCOPES,
         }
         return creds
 
