@@ -93,6 +93,22 @@
           </td>
         </tr>
         <tr>
+          <td>Building application fee</td>
+          <td>
+            {% if app.application_fee_status == 'Billed' %}
+              <span style="color:#27ae60;">✓ $250 building review fee charged to your maintenance account</span>
+              {% if milestones.get('Application Fee Billed') %}
+                <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Application Fee Billed'] }}</span>
+              {% endif %}
+            {% else %}
+              <span style="color:#aaa;">— Will be charged to your maintenance account upon submission review</span>
+            {% endif %}
+            <span style="display:block; font-size:12px; color:#aaa; margin-top:4px;">
+              Note: The reviewing architect's fees are billed separately and directly by the architect.
+            </span>
+          </td>
+        </tr>
+        <tr>
           <td>Architect assigned</td>
           <td>
             {% if app.architect_assigned %}
