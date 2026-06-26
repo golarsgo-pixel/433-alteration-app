@@ -27,19 +27,7 @@ BOARD_EMAIL = os.environ["BOARD_EMAIL"]
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"]
 ALTERATIONS_EMAIL = os.environ["ALTERATIONS_EMAIL"]
 
-# ── Background inbox scheduler ────────────────────────────────────────────────
-# Checks alterations@433w34.com for unread architect emails every 5 minutes.
-# Guard prevents double-start in Flask debug mode (which forks two processes).
-if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-    try:
-        from apscheduler.schedulers.background import BackgroundScheduler
-        from services.inbox_service import process_architect_inbox
-        _scheduler = BackgroundScheduler(daemon=True)
-        _scheduler.add_job(process_architect_inbox, "interval", minutes=15, id="inbox_check",
-                           misfire_grace_time=60)
-        _scheduler.start()
-    except Exception as _e:
-        app.logger.warning(f"Inbox scheduler could not start: {_e}")
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
 # ── Public routes ──────────────────────────────────────────────────────────────
 
@@ -598,6 +586,20 @@ def admin_check_inbox():
     except Exception as e:
         flash(f"Inbox check error: {e}", "error")
     return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/cron/check-inbox", methods=["POST"])
+def cron_check_inbox():
+    """Called by Render Cron Job every 15 minutes. Protected by CRON_SECRET token."""
+    auth = request.headers.get("Authorization", "")
+    if not CRON_SECRET or auth != f"Bearer {CRON_SECRET}":
+        return jsonify({"error": "Unauthorized"}), 401
+    try:
+        from services.inbox_service import process_inbox
+        processed, errors = process_inbox()
+        return jsonify({"processed": processed, "errors": errors}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/admin/token")
