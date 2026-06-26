@@ -58,8 +58,8 @@ your open-wall period — which avoids mid-project delays. We will be in touch.
     if app.get("expediting") == "yes":
         expediting_note = """
 <div style="background:#d5f5e3; border-left:4px solid #27ae60; padding:12px 16px; margin:16px 0;">
-<strong>Expedited Review Requested.</strong> Your request for expedited architect review has been noted.
-The assigned architect will confirm availability and their expediting fee before proceeding.
+<strong>Expedited Review Requested.</strong> Your request for expedited review has been noted.
+The Corporation's Designated Engineer will confirm availability and their expediting fee before proceeding.
 Expedited review typically takes 4–5 business days from receipt of a complete package.
 </div>
 """
@@ -90,10 +90,10 @@ Expedited review typically takes 4–5 business days from receipt of a complete 
 <ol>
   <li>We will review your submission for completeness. If any required documents are missing or incomplete,
       we will contact you at <strong>{app.get('shareholder_email')}</strong>.</li>
-  <li>Once all required documents are confirmed, we will assign a reviewing architect and send them your package.
+  <li>Once all required documents are confirmed, we will assign the Corporation's Designated Engineer and send them your package.
       All communications will go through <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>.</li>
-  <li>The architect may send questions or requests for additional information, which will be forwarded to you.</li>
-  <li>Once the architect recommends approval, the Board will vote and you will receive written notification.</li>
+  <li>The Designated Engineer may send questions or requests for additional information, which will be forwarded to you.</li>
+  <li>Once the Designated Engineer recommends approval, the Board will vote and you will receive written notification.</li>
   <li>No work may begin until you receive written board approval and have sent neighbor notification letters.</li>
 </ol>
 
@@ -263,7 +263,7 @@ def approval_email(app: dict) -> str:
     if app.get("permit_required") == "yes":
         permit_note = f"""
 <div style="background:#d6eaf8; border-left:4px solid #2980b9; padding:12px 16px; margin:16px 0;">
-<strong>Permits Required:</strong> The reviewing architect has indicated that one or more permits are
+<strong>Permits Required:</strong> The Corporation's Designated Engineer has indicated that one or more permits are
 required before work may begin. Your contractor must file for and obtain all required permits before
 commencing work. Email copies to <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>.
 </div>
@@ -474,7 +474,7 @@ def _reply_instructions(app: dict, audience: str = "shareholder") -> str:
     audience: "shareholder" or "architect"
     """
     if audience == "shareholder":
-        action = "respond to the architect's comments"
+        action = "respond to the Designated Engineer's comments"
     else:
         action = "submit further comments or your approval recommendation"
     return f"""
@@ -486,7 +486,7 @@ def _reply_instructions(app: dict, audience: str = "shareholder") -> str:
   <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> with
   <strong>{app.get('app_id')}</strong> anywhere in the subject line.<br>
   <span style="font-size:13px; color:#555; margin-top:6px; display:block;">
-    All correspondence is logged and stored. Do not email the architect or board directly —
+    All correspondence is logged and stored. Do not email the Designated Engineer or board directly —
     use this address to keep your application record complete.
   </span>
 </div>
@@ -507,7 +507,7 @@ def architect_review_forward_email(app: dict, cover_note: str, round_label: str 
         body = f"""
 <p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
 {gc_line}
-<p>The reviewing architect has submitted their {round_label} comments on your alteration application
+<p>The Corporation's Designated Engineer has submitted their {round_label} comments on your alteration application
 for Apartment <strong>{app.get('apartment')}</strong>. Please review the attached report carefully —
 it is the official document.</p>
 <p>Please respond to each numbered item in writing, in sequence, within 10 business days.</p>
@@ -570,44 +570,44 @@ def board_architect_recommendation_email(app: dict, recommendation: str, cover_n
             "✅ Recommends Approval",
             "#27ae60",
             "#f0fff4",
-            "The architect has completed their review and recommends board approval.",
+            "The Designated Engineer has completed their review and recommends board approval.",
         ),
         "approve_with_conditions": (
             "⚠️ Recommends Approval with Conditions",
             "#e67e22",
             "#fef9ec",
-            "The architect recommends approval subject to conditions stated in their report. "
+            "The Designated Engineer recommends approval subject to conditions stated in their report. "
             "Please review carefully before voting.",
         ),
         "deny": (
             "❌ Recommends Denial",
             "#e74c3c",
             "#fdf2f2",
-            "The architect recommends the board <strong>deny</strong> this application. "
+            "The Designated Engineer recommends the board <strong>deny</strong> this application. "
             "Please review their report before responding to the shareholder.",
         ),
     }
     label, color, bg, context = rec_map.get(
         recommendation,
-        ("Review Complete", "#555", "#f9f9f9", "The architect has completed their review.")
+        ("Review Complete", "#555", "#f9f9f9", "The Designated Engineer has completed their review.")
     )
     admin_url = f"{APP_URL}/admin/application/{app.get('app_id')}"
 
     summary_section = ""
     if cover_note:
         summary_section = f"""
-<h3>Architect Report Summary</h3>
+<h3>Designated Engineer Report Summary</h3>
 <div style="background:#f9f9f9; border-left:3px solid #ccc; padding:12px 16px;
             margin:16px 0; font-size:13px; color:#444;">
 {cover_note}
 </div>
 <p style="font-size:12px; color:#aaa; margin-top:0;">
-  The original architect report PDF is attached to this email and filed in the Drive folder.
+  The original Designated Engineer report PDF is attached to this email and filed in the Drive folder.
 </p>
 """
 
     return _wrap(f"""
-<h2>Architect Review Complete — Action Required</h2>
+<h2>Designated Engineer Review Complete — Action Required</h2>
 
 <div style="background:{bg}; border:2px solid {color}; border-radius:6px;
             padding:16px 20px; margin:20px 0;">
@@ -622,7 +622,7 @@ def board_architect_recommendation_email(app: dict, recommendation: str, cover_n
       <td style="padding:6px 12px;">{app.get('apartment')}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
       <td style="padding:6px 12px;">{app.get('shareholder_name')}</td></tr>
-  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Reviewing Architect</td>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Designated Engineer</td>
       <td style="padding:6px 12px;">{app.get('architect_assigned', '—')}</td></tr>
 </table>
 
@@ -639,7 +639,7 @@ def board_architect_recommendation_email(app: dict, recommendation: str, cover_n
 </div>
 
 <p style="font-size:12px; color:#aaa; margin-top:24px;">
-  This alert was generated automatically. If the architect's email was misclassified as a final
+  This alert was generated automatically. If the Designated Engineer's email was misclassified as a final
   recommendation, no action is needed — the status can be corrected in the admin panel.
 </p>
 """)
@@ -808,8 +808,8 @@ def scope_change_alert_email(app: dict, detection: dict, submitted_by: str, file
 {removals_section}
 
 <p style="font-size:13px; color:#555; margin-top:16px;">
-  The revised scope has been forwarded to the architect as a normal response.
-  If the additions above require re-review, the architect will raise them in their next report.
+  The revised scope has been forwarded to the Designated Engineer as a normal response.
+  If the additions above require re-review, the Designated Engineer will raise them in their next report.
   No action needed unless you want to discuss with the shareholder proactively.
 </p>
 

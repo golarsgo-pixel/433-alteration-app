@@ -68,7 +68,7 @@
       <dd>{{ app.end_date or '—' }}</dd>
       <dt>General Contractor</dt>
       <dd>{{ app.gc_name }} — {{ app.gc_company }}</dd>
-      <dt>Architect Assigned</dt>
+      <dt>Designated Engineer</dt>
       <dd>{{ app.architect_assigned or 'Pending assignment' }}</dd>
       <dt>Expedited Review</dt>
       <dd>{{ 'Yes' if app.expediting == 'yes' else 'No' }}</dd>
@@ -104,12 +104,12 @@
               <span style="color:#aaa;">— Will be charged to your maintenance account upon submission review</span>
             {% endif %}
             <span style="display:block; font-size:12px; color:#aaa; margin-top:4px;">
-              Note: The reviewing architect's fees are billed separately and directly by the architect.
+              Note: The Designated Engineer's fees are billed separately and directly by the Designated Engineer.
             </span>
           </td>
         </tr>
         <tr>
-          <td>Architect assigned</td>
+          <td>Designated Engineer assigned</td>
           <td>
             {% if app.architect_assigned %}
               <span style="color:#27ae60;">✓ {{ app.architect_assigned }}</span>
@@ -122,17 +122,17 @@
           </td>
         </tr>
         <tr>
-          <td>Architect review</td>
+          <td>Engineer review</td>
           <td>
             {% if app.status in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
               <span style="color:#27ae60;">✓ Complete</span>
             {% elif app.status == 'Architect Review' %}
-              <span style="color:#e67e22;">⏳ In progress — respond promptly to any architect requests</span>
+              <span style="color:#e67e22;">⏳ In progress — respond promptly to any Designated Engineer requests</span>
               {% if milestones.get('Status: Architect Review (Initial)') %}
                 <span style="color:#aaa; font-size:12px; margin-left:8px;">since {{ milestones['Status: Architect Review (Initial)'] }}</span>
               {% endif %}
             {% elif app.architect_assigned %}
-              <span style="color:#e67e22;">⏳ Package sent — awaiting architect comments</span>
+              <span style="color:#e67e22;">⏳ Package sent — awaiting Designated Engineer comments</span>
             {% else %}
               <span style="color:#aaa;">— Not started</span>
             {% endif %}
@@ -147,7 +147,7 @@
                 <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Status: Board Approved'] }}</span>
               {% endif %}
             {% else %}
-              <span style="color:#aaa;">— Pending architect recommendation</span>
+              <span style="color:#aaa;">— Pending Designated Engineer recommendation</span>
             {% endif %}
           </td>
         </tr>
@@ -218,7 +218,7 @@
               {% set permits = app.permits | default('[]') %}
               Required — {{ permits }}
             {% else %}
-              <span style="color:#aaa;">— Determined during architect review</span>
+              <span style="color:#aaa;">— Determined during engineer review</span>
             {% endif %}
           </td>
         </tr>
@@ -231,7 +231,7 @@
     <h2>Preliminary Review Notes</h2>
     <p style="color:#444;">{{ app.ai_review_summary }}</p>
     <p style="font-size:12px; color:#aaa; margin-top:12px;">
-      This is an automated preliminary review. The assigned architect's report is the authoritative review.
+      This is an automated preliminary review. The Designated Engineer's report is the authoritative review.
     </p>
   </div>
   {% endif %}
