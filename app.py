@@ -523,21 +523,24 @@ def admin_neighbor_letters(app_id):
 @require_board_login
 def admin_withdraw(app_id):
     from services.sheets_service import get_application, update_application_field, log_event
-    app_data = get_application(app_id)
-    if not app_data:
-        flash("Application not found.", "error")
-        return redirect(url_for("admin_dashboard"))
+    try:
+        app_data = get_application(app_id)
+        if not app_data:
+            flash("Application not found.", "error")
+            return redirect(url_for("admin_dashboard"))
 
-    reason = request.form.get("reason", "").strip()
-    update_application_field(app_id, "status", "Withdrawn")
-    if reason:
-        existing_notes = app_data.get("notes", "") or ""
-        updated_notes = (existing_notes + "\n\n" if existing_notes else "") + f"Withdrawal reason: {reason}"
-        update_application_field(app_id, "notes", updated_notes)
-    log_event(app_id, "Status: Withdrawn",
-              reason or "Marked withdrawn/canceled by board.",
-              actor="board", apartment=app_data.get("apartment", ""))
-    flash(f"Application {app_id} marked as withdrawn.", "info")
+        reason = request.form.get("reason", "").strip()
+        update_application_field(app_id, "status", "Withdrawn")
+        if reason:
+            existing_notes = app_data.get("notes", "") or ""
+            updated_notes = (existing_notes + "\n\n" if existing_notes else "") + f"Withdrawal reason: {reason}"
+            update_application_field(app_id, "notes", updated_notes)
+        log_event(app_id, "Status: Withdrawn",
+                  reason or "Marked withdrawn/canceled by board.",
+                  actor="board", apartment=app_data.get("apartment", ""))
+        flash(f"Application {app_id} marked as withdrawn.", "info")
+    except Exception as e:
+        flash(f"Error withdrawing application: {e}", "error")
     return redirect(url_for("admin_dashboard"))
 
 
