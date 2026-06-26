@@ -72,9 +72,9 @@ For Full Alterations — all submitted together:
 DOB permits are obtained AFTER board approval, before work begins.
 Note: "Assumption of Alteration Agreement" (formerly Addendum C) has been eliminated from the current agreement.
 
-COI NAMED INSUREDS: 433 West 34th Street Owners Corp., its Officers & Directors, Orsid Realty Corp.
-d/b/a Orsid New York (managing agent), the Corporation's Designated Engineer, and the shareholder(s)
-in apartments below and adjacent to the work apartment. Terra Holdings is NOT a required named insured.
+COI NAMED INSUREDS: 433 West 34th Street Owners Corp., its Officers, Directors & Shareholders, Orsid Realty Corp.
+d/b/a Orsid New York (Managing Agent), the Corporation's Designated Engineer, and the shareholder(s)
+in the apartment directly below the work apartment. Adjacent neighbors are NOT required. Terra Holdings is NOT a required named insured.
 
 WASHER/DRYER POLICY: Prohibited as a standalone alteration. May be considered by the Board ONLY in
 connection with a full kitchen renovation or the combination of two or more apartments where a new
