@@ -50,7 +50,7 @@
   </div>
 
   {% set show_withdrawn = request.args.get('withdrawn') == '1' %}
-  {% set active_apps = applications | selectattr('status', '!=', 'Withdrawn') | list %}
+  {% set active_apps = applications | rejectattr('status', 'equalto', 'Withdrawn') | list %}
   {% set withdrawn_apps = applications | selectattr('status', 'equalto', 'Withdrawn') | list %}
   {% set display_apps = applications if show_withdrawn else active_apps %}
 
