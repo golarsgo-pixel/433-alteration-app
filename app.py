@@ -35,7 +35,7 @@ if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         from apscheduler.schedulers.background import BackgroundScheduler
         from services.inbox_service import process_architect_inbox
         _scheduler = BackgroundScheduler(daemon=True)
-        _scheduler.add_job(process_architect_inbox, "interval", minutes=5, id="inbox_check",
+        _scheduler.add_job(process_architect_inbox, "interval", minutes=15, id="inbox_check",
                            misfire_grace_time=60)
         _scheduler.start()
     except Exception as _e:

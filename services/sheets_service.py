@@ -28,7 +28,7 @@ COLUMNS = [
 
 def _service():
     creds = get_credentials()
-    return build("sheets", "v4", credentials=creds)
+    return build("sheets", "v4", credentials=creds, cache_discovery=False)
 
 
 def _col_letter(index: int) -> str:

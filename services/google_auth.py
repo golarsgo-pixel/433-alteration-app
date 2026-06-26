@@ -83,7 +83,7 @@ def handle_callback(args):
         creds = flow.credentials
 
         import googleapiclient.discovery
-        service = googleapiclient.discovery.build("oauth2", "v2", credentials=creds)
+        service = googleapiclient.discovery.build("oauth2", "v2", credentials=creds, cache_discovery=False)
         user_info = service.userinfo().get().execute()
         email = user_info.get("email", "")
 

@@ -10,7 +10,7 @@ ROOT_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")
 
 def _service():
     creds = get_credentials()
-    return build("drive", "v3", credentials=creds)
+    return build("drive", "v3", credentials=creds, cache_discovery=False)
 
 
 def create_application_folder(app_id: str, apartment: str) -> tuple[str, str]:

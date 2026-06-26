@@ -19,7 +19,7 @@ _log = logging.getLogger(__name__)
 
 
 def _service():
-    return build("sheets", "v4", credentials=get_credentials())
+    return build("sheets", "v4", credentials=get_credentials(), cache_discovery=False)
 
 
 def _ensure_tab():

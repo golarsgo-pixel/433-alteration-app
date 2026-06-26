@@ -12,7 +12,7 @@ ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "alterations@433w34.com"
 
 
 def _svc():
-    return build("gmail", "v1", credentials=get_credentials())
+    return build("gmail", "v1", credentials=get_credentials(), cache_discovery=False)
 
 
 # ── Sending ───────────────────────────────────────────────────────────────────
