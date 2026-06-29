@@ -29,6 +29,13 @@ ALTERATIONS_EMAIL = os.environ["ALTERATIONS_EMAIL"]
 
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
+@app.template_filter('comma')
+def comma_filter(value):
+    try:
+        return f"{int(float(str(value).replace(',', '').replace('$', ''))):,}"
+    except (ValueError, TypeError):
+        return value
+
 # ── Public routes ──────────────────────────────────────────────────────────────
 
 @app.route("/")

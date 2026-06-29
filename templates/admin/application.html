@@ -65,7 +65,7 @@
           <dt>Project Type</dt>
           <dd>{{ 'Decoration Project' if app.project_type == 'decoration' else 'Full Alteration' }}</dd>
           <dt>Estimated Cost</dt>
-          <dd>${{ app.estimated_cost }}</dd>
+          <dd>${{ app.estimated_cost | comma }}</dd>
           <dt>Proposed Start</dt>
           <dd>{{ app.start_date or '—' }}</dd>
           <dt>Proposed End</dt>

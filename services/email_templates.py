@@ -139,7 +139,7 @@ def board_alert_email(app: dict) -> str:
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Project Type</td>
       <td style="padding:6px 12px;">{project_label}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Estimated Cost</td>
-      <td style="padding:6px 12px;">${app.get('estimated_cost', 'not provided')}</td></tr>
+      <td style="padding:6px 12px;">${_fmt_cost(app.get('estimated_cost'))}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">GC</td>
       <td style="padding:6px 12px;">{app.get('gc_name', '—')} / {app.get('gc_company', '—')}</td></tr>
 </table>
@@ -231,7 +231,7 @@ will follow shortly.</p>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Project Type</td>
       <td style="padding:6px 12px;">{project_label}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Estimated Cost</td>
-      <td style="padding:6px 12px;">${app.get('estimated_cost', 'not provided')}</td></tr>
+      <td style="padding:6px 12px;">${_fmt_cost(app.get('estimated_cost'))}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Proposed Start</td>
       <td style="padding:6px 12px;">{app.get('start_date', 'TBD')}</td></tr>
 </table>
@@ -277,7 +277,7 @@ applicable expediting fee.
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Project Type</td>
       <td style="padding:6px 12px;">{project_label}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Estimated Cost</td>
-      <td style="padding:6px 12px;">${app.get('estimated_cost', 'not provided')}</td></tr>
+      <td style="padding:6px 12px;">${_fmt_cost(app.get('estimated_cost'))}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Proposed Start</td>
       <td style="padding:6px 12px;">{app.get('start_date', 'TBD')}</td></tr>
   <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Proposed End</td>
@@ -935,3 +935,10 @@ def _security_deposit(estimated_cost_str: str) -> str:
         return f"${deposit:,.0f}"
     except (ValueError, TypeError):
         return "$2,000 minimum"
+
+
+def _fmt_cost(val) -> str:
+    try:
+        return f"{int(float(str(val).replace(',', '').replace('$', ''))):,}"
+    except (ValueError, TypeError):
+        return str(val) if val else "not provided"
