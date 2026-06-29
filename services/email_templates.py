@@ -22,7 +22,11 @@ def _sig():
 
 def _wrap(content: str) -> str:
     return f"""
-<html><body style="font-family:Arial,sans-serif; font-size:14px; color:#222; max-width:680px; margin:0 auto; padding:24px;">
+<html><body style="font-family:Arial,sans-serif; font-size:14px; color:#222; max-width:680px; margin:0 auto; padding:0 24px 24px;">
+<div style="text-align:center; padding:20px 0 16px; border-bottom:1px solid #e8e8e8; margin-bottom:24px;">
+  <img src="{APP_URL}/static/img/logo-email.png" alt="433 West 34th Street" width="200" height="92"
+       style="display:inline-block; max-width:100%; height:auto;">
+</div>
 {content}
 {_sig()}
 </body></html>
