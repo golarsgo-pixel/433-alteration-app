@@ -198,15 +198,63 @@ If you have any questions, reply to this email or reach out to the board.</p>
 """)
 
 
-# ── Architect: application package ────────────────────────────────────────────
+# ── Designated Engineer: heads-up notification (pre-package) ──────────────────
+
+def architect_notification_email(app: dict, architect_name: str, expediting: bool) -> str:
+    project_label = "Decoration Project" if app.get("project_type") == "decoration" else "Full Alteration"
+    expediting_note = ""
+    if expediting:
+        expediting_note = """
+<div style="background:#d5f5e3; border-left:4px solid #27ae60; padding:12px 16px; margin:16px 0;">
+<strong>Expedited Review Requested.</strong> The shareholder has requested expedited review.
+Please reply to confirm your availability and expediting fee at your earliest convenience so we
+can communicate this to the shareholder before sending the full package.
+</div>
+"""
+    return _wrap(f"""
+<p>Dear {architect_name} team,</p>
+
+<p>We are writing to let you know that a new alteration application has been received at
+<strong>433 West 34th Street</strong> and we would like to engage you for review. The full application
+package — including plans, signed agreement, contractor information, and all supporting documents —
+will follow shortly.</p>
+
+{expediting_note}
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px;">{app.get('app_id')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px;">{app.get('apartment')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:6px 12px;">{app.get('shareholder_name')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Project Type</td>
+      <td style="padding:6px 12px;">{project_label}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Estimated Cost</td>
+      <td style="padding:6px 12px;">${app.get('estimated_cost', 'not provided')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Proposed Start</td>
+      <td style="padding:6px 12px;">{app.get('start_date', 'TBD')}</td></tr>
+</table>
+
+<h3>Scope Summary</h3>
+<p style="background:#f9f9f9; padding:12px; border-left:3px solid #ccc;">{app.get('scope_description', '—')}</p>
+
+<p>Please reply to confirm you are available to take on this review. We will send the complete
+application package once confirmed.</p>
+
+<p>Thank you — please don't hesitate to reach out with any questions.</p>
+""")
+
+
+# ── Designated Engineer: full application package ─────────────────────────────
 
 def architect_package_email(app: dict, architect_name: str, expediting: bool) -> str:
     expediting_note = ""
     if expediting:
         expediting_note = """
 <div style="background:#d5f5e3; border-left:4px solid #27ae60; padding:12px 16px; margin:16px 0;">
-<strong>Expedited Review Requested.</strong> The shareholder has requested expedited review and will pay the
-applicable expediting fee. Please confirm your availability and fee with us at your earliest convenience.
+<strong>Expedited Review.</strong> The shareholder has requested expedited review and will pay your
+applicable expediting fee.
 </div>
 """
     project_label = "Decoration Project" if app.get("project_type") == "decoration" else "Full Alteration"
@@ -214,8 +262,8 @@ applicable expediting fee. Please confirm your availability and fee with us at y
     return _wrap(f"""
 <p>Dear {architect_name} team,</p>
 
-<p>Please find below the details for a new alteration application at <strong>433 West 34th Street</strong>
-requiring your review.</p>
+<p>Please find the complete application package below for the alteration at
+<strong>433 West 34th Street, Apartment {app.get('apartment')}</strong>.</p>
 
 {expediting_note}
 
@@ -240,18 +288,23 @@ requiring your review.</p>
 <p style="background:#f9f9f9; padding:12px; border-left:3px solid #ccc;">{app.get('scope_description', '—')}</p>
 
 <h3>Submitted Documents</h3>
-<p>📁 All submitted documents are available here:<br>
+<p>📁 All submitted documents are available in the application's Drive folder:<br>
 <a href="{app.get('drive_folder_url', '#')}">{app.get('drive_folder_url', 'Link not available')}</a></p>
 
-<h3>Instructions</h3>
+<h3>Review Instructions</h3>
 <ul>
-  <li>Please reply to <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> with your initial report
-      or any questions. Use the Application ID <strong>{app.get('app_id')}</strong> in your subject line.</li>
+  <li>Reply to <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a> with your initial report
+      or any questions, with Application ID <strong>{app.get('app_id')}</strong> in the subject line.</li>
   <li>Your report will be forwarded to the shareholder and their GC for response.</li>
-  <li>When you are satisfied and ready to recommend approval, please send a written recommendation to
+  <li>When ready to recommend approval, please send a written recommendation to
       <a href="mailto:{ALTERATIONS_EMAIL}">{ALTERATIONS_EMAIL}</a>.</li>
-  <li>Please also indicate whether a DOB permit (or other permits) will be required for this scope.</li>
+  <li>Please indicate whether a DOB permit (or other permits) will be required for this scope.</li>
 </ul>
+
+<h3>Invoicing</h3>
+<p>Please submit all invoices to Orsid Realty Corp., 156 West 56th Street, 6th Floor, New York, NY 10019,
+referencing <strong>Unit {app.get('apartment')}</strong> and Application ID <strong>{app.get('app_id')}</strong>
+on each invoice. Orsid will bill the charges back to the shareholder.</p>
 
 <p>Thank you — please don't hesitate to reach out with any questions.</p>
 """)

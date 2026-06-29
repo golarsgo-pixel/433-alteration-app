@@ -139,9 +139,9 @@
     <!-- RIGHT COLUMN: Actions -->
     <div>
 
-      <!-- Architect Assignment -->
+      <!-- Designated Engineer Assignment -->
       <div class="card">
-        <h2>Architect Assignment</h2>
+        <h2>Engineer Assignment</h2>
         {% if app.architect_assigned %}
         <p style="margin-bottom:12px;">
           <strong>Assigned:</strong> {{ app.architect_assigned }}<br>
@@ -150,7 +150,7 @@
         {% endif %}
         <form method="POST" action="/admin/application/{{ app.app_id }}/assign">
           <div class="form-group">
-            <label>Architect</label>
+            <label>Designated Engineer</label>
             <select name="architect" required>
               <option value="">— Select —</option>
               <option value="Melone" {{ 'selected' if app.architect_assigned == 'Melone' }}>
@@ -169,10 +169,27 @@
             </label>
           </div>
           <button type="submit" class="btn btn-primary btn-sm" style="width:100%;">
-            {{ 'Reassign & Resend Package' if app.architect_assigned else 'Assign & Send Package' }}
+            {{ 'Reassign &amp; Re-notify' if app.architect_assigned else 'Assign &amp; Notify Engineer' }}
           </button>
         </form>
       </div>
+
+      <!-- Send Package (shown after assignment, before package sent) -->
+      {% if app.architect_assigned and app.status == 'Architect Assigned' %}
+      <div class="card" style="border:2px solid #e67e22;">
+        <h2 style="color:#e67e22;">Send Review Package</h2>
+        <p style="font-size:13px; color:#555; margin-bottom:16px;">
+          {{ app.architect_assigned }} has been notified. When ready — and for expedited reviews,
+          once they've confirmed availability — send the full application package. This will move
+          the status to <strong>Architect Review</strong>.
+        </p>
+        <form method="POST" action="/admin/application/{{ app.app_id }}/send-package">
+          <button type="submit" class="btn btn-primary btn-sm" style="width:100%; background:#e67e22; border-color:#e67e22;">
+            Send Package to {{ app.architect_assigned }} →
+          </button>
+        </form>
+      </div>
+      {% endif %}
 
       <!-- Status & Payment -->
       <div class="card">

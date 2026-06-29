@@ -14,8 +14,8 @@ from services.gmail_service import send_email
 from services.claude_service import review_application
 from services.email_templates import (
     receipt_email, board_alert_email, eddie_new_submission_email,
-    architect_package_email, approval_email, eddie_approval_email,
-    neighbor_letter_email
+    architect_notification_email, architect_package_email,
+    approval_email, eddie_approval_email, neighbor_letter_email
 )
 
 load_dotenv()
@@ -307,7 +307,6 @@ def admin_assign(app_id):
         update_application_field(app_id, "expediting", expediting)
         update_application_field(app_id, "status", "Architect Assigned")
 
-        # Send package to architect
         melone_emails = os.environ.get("MELONE_EMAILS", "").split(",")
         capobianco_email = os.environ.get("CAPOBIANCO_EMAIL", "")
         to_email = ",".join(melone_emails) if architect == "Melone" else capobianco_email
@@ -315,15 +314,47 @@ def admin_assign(app_id):
         send_email(
             to=to_email,
             cc=ADMIN_EMAIL,
-            subject=f"Alteration Review Request — 433 W 34th St, Apt {application['apartment']} | {app_id}",
-            body=architect_package_email(application, architect, expediting == "yes"),
+            subject=f"Alteration Review — 433 W 34th St, Apt {application['apartment']} | {app_id}",
+            body=architect_notification_email(application, architect, expediting == "yes"),
             from_alias=ALTERATIONS_EMAIL,
             reply_to=ALTERATIONS_EMAIL,
         )
         log_event(app_id, "Status: Architect Assigned",
-                  f"Assigned to {architect}. {'Expedited review requested.' if expediting == 'yes' else 'Standard review.'} Package emailed to {to_email}.",
+                  f"Assigned to {architect}. {'Expedited review requested.' if expediting == 'yes' else 'Standard review.'} Notification sent to {to_email}. Package not yet sent.",
                   actor="board", apartment=application.get("apartment", ""))
-        flash(f"Application assigned to {architect} and package sent.", "success")
+        flash(f"{architect} notified. Send the full package when ready.", "success")
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("admin_application", app_id=app_id))
+
+
+@app.route("/admin/application/<app_id>/send-package", methods=["POST"])
+@require_board_login
+def admin_send_package(app_id):
+    try:
+        application = get_application(app_id)
+        architect = application.get("architect_assigned")
+        if not architect:
+            flash("No Designated Engineer assigned — assign one first.", "error")
+            return redirect(url_for("admin_application", app_id=app_id))
+
+        melone_emails = os.environ.get("MELONE_EMAILS", "").split(",")
+        capobianco_email = os.environ.get("CAPOBIANCO_EMAIL", "")
+        to_email = ",".join(melone_emails) if architect == "Melone" else capobianco_email
+
+        send_email(
+            to=to_email,
+            cc=ADMIN_EMAIL,
+            subject=f"Alteration Review Package — 433 W 34th St, Apt {application['apartment']} | {app_id}",
+            body=architect_package_email(application, architect, application.get("expediting") == "yes"),
+            from_alias=ALTERATIONS_EMAIL,
+            reply_to=ALTERATIONS_EMAIL,
+        )
+        update_application_field(app_id, "status", "Architect Review")
+        log_event(app_id, "Status: Architect Review (Initial)",
+                  f"Full application package sent to {architect} at {to_email}.",
+                  actor="board", apartment=application.get("apartment", ""))
+        flash(f"Package sent to {architect}. Status updated to Architect Review.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
     return redirect(url_for("admin_application", app_id=app_id))
