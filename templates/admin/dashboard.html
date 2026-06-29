@@ -27,7 +27,7 @@
   <!-- Summary tiles -->
   {% set ns = namespace(received=0, assigned=0, review=0, approved=0, wip=0) %}
   {% for a in applications %}
-    {% if a.status == 'Received' %}{% set ns.received = ns.received + 1 %}{% endif %}
+    {% if a.status in ['Received', 'Pending Assignment'] %}{% set ns.received = ns.received + 1 %}{% endif %}
     {% if a.status == 'Architect Assigned' %}{% set ns.assigned = ns.assigned + 1 %}{% endif %}
     {% if a.status == 'Architect Review' %}{% set ns.review = ns.review + 1 %}{% endif %}
     {% if a.status == 'Board Approved' %}{% set ns.approved = ns.approved + 1 %}{% endif %}

@@ -305,7 +305,7 @@ def admin_assign(app_id):
         application = get_application(app_id)
         update_application_field(app_id, "architect_assigned", architect)
         update_application_field(app_id, "expediting", expediting)
-        update_application_field(app_id, "status", "Architect Assigned")
+        update_application_field(app_id, "status", "Pending Assignment")
 
         melone_emails = os.environ.get("MELONE_EMAILS", "").split(",")
         capobianco_email = os.environ.get("CAPOBIANCO_EMAIL", "")
@@ -319,10 +319,10 @@ def admin_assign(app_id):
             from_alias=ALTERATIONS_EMAIL,
             reply_to=ALTERATIONS_EMAIL,
         )
-        log_event(app_id, "Status: Architect Assigned",
-                  f"Assigned to {architect}. {'Expedited review requested.' if expediting == 'yes' else 'Standard review.'} Notification sent to {to_email}. Package not yet sent.",
+        log_event(app_id, "Engineer Notified",
+                  f"{architect} notified. {'Expedited review requested — awaiting availability confirmation.' if expediting == 'yes' else 'Standard review.'} Notification sent to {to_email}. Package not yet sent.",
                   actor="board", apartment=application.get("apartment", ""))
-        flash(f"{architect} notified. Send the full package when ready.", "success")
+        flash(f"{architect} notified. Send the full package once they confirm.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
     return redirect(url_for("admin_application", app_id=app_id))
@@ -350,11 +350,11 @@ def admin_send_package(app_id):
             from_alias=ALTERATIONS_EMAIL,
             reply_to=ALTERATIONS_EMAIL,
         )
-        update_application_field(app_id, "status", "Architect Review")
-        log_event(app_id, "Status: Architect Review (Initial)",
+        update_application_field(app_id, "status", "Architect Assigned")
+        log_event(app_id, "Status: Architect Assigned",
                   f"Full application package sent to {architect} at {to_email}.",
                   actor="board", apartment=application.get("apartment", ""))
-        flash(f"Package sent to {architect}. Status updated to Architect Review.", "success")
+        flash(f"Package sent to {architect}. Status updated to Architect Assigned.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
     return redirect(url_for("admin_application", app_id=app_id))

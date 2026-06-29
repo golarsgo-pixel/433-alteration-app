@@ -17,7 +17,7 @@
 
   <!-- Status track -->
   {% set stages = ['Received', 'Architect Assigned', 'Architect Review', 'Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete'] %}
-  {% set status_order = {'Received': 0, 'Architect Assigned': 1, 'Architect Review': 2, 'Awaiting Board Vote': 2, 'Board Approved': 3, 'Work In Progress': 4, 'Project Sign-Off': 5, 'Complete': 6} %}
+  {% set status_order = {'Received': 0, 'Pending Assignment': 0, 'Architect Assigned': 1, 'Architect Review': 2, 'Awaiting Board Vote': 2, 'Board Approved': 3, 'Work In Progress': 4, 'Project Sign-Off': 5, 'Complete': 6} %}
   {% set current_idx = status_order.get(app.status, 0) %}
   <div class="status-track" style="margin-bottom:24px;">
     {% for stage in stages %}
