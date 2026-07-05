@@ -264,20 +264,31 @@ def save_settings(updates: dict):
     rows = result.get("values", [])
     existing_keys = {row[0]: i + 2 for i, row in enumerate(rows[1:]) if row}
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    batch_data = []
+    new_rows = []
     for key, value in updates.items():
         if key in existing_keys:
-            row_num = existing_keys[key]
-            svc.spreadsheets().values().update(
-                spreadsheetId=SHEET_ID,
-                range=f"Settings!B{row_num}:C{row_num}",
-                valueInputOption="RAW",
-                body={"values": [[str(value), now]]},
-            ).execute()
+            batch_data.append({
+                "range": f"Settings!B{existing_keys[key]}:C{existing_keys[key]}",
+                "values": [[str(value), now]],
+            })
         else:
-            svc.spreadsheets().values().append(
-                spreadsheetId=SHEET_ID,
-                range="Settings!A1",
-                valueInputOption="RAW",
-                insertDataOption="INSERT_ROWS",
-                body={"values": [[key, str(value), now]]},
-            ).execute()
+            new_rows.append([key, str(value), now])
+
+    # One API call for all existing-key updates
+    if batch_data:
+        svc.spreadsheets().values().batchUpdate(
+            spreadsheetId=SHEET_ID,
+            body={"valueInputOption": "RAW", "data": batch_data},
+        ).execute()
+
+    # Append only truly new keys (first-time use of a new setting)
+    for row in new_rows:
+        svc.spreadsheets().values().append(
+            spreadsheetId=SHEET_ID,
+            range="Settings!A1",
+            valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
+            body={"values": [row]},
+        ).execute()
