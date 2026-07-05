@@ -141,7 +141,8 @@ def apply():
             from_alias=ALTERATIONS_EMAIL,
         )
         # Alert to board + Orsid building management
-        orsid_cc = os.environ.get("ORSID_CC_EMAILS", "")
+        _s = get_settings()
+        orsid_cc = _s.get("orsid_coordinator_email", "")
         send_email(
             to=ADMIN_EMAIL,
             cc=orsid_cc if orsid_cc else None,
@@ -150,12 +151,14 @@ def apply():
             from_alias=ALTERATIONS_EMAIL,
         )
         # FYI to Eddie
-        send_email(
-            to=os.environ["EDDIE_EMAIL"],
-            subject=f"FYI: New Alteration Application — Apt {data['apartment']}",
-            body=eddie_new_submission_email(data),
-            from_alias=ALTERATIONS_EMAIL,
-        )
+        eddie_email = _s.get("superintendent_email", "")
+        if eddie_email:
+            send_email(
+                to=eddie_email,
+                subject=f"FYI: New Alteration Application — Apt {data['apartment']}",
+                body=eddie_new_submission_email(data),
+                from_alias=ALTERATIONS_EMAIL,
+            )
         log_event(app_id, "Email: Receipt sent",
                   f"Receipt sent to {data['shareholder_email']}"
                   + (f", CC {data['gc_email']}" if data.get('gc_email') else "") + ". Board alerted.",
@@ -436,14 +439,18 @@ def admin_approve(app_id):
             from_alias=ALTERATIONS_EMAIL,
         )
         # FYI to Eddie
-        send_email(
-            to=os.environ["EDDIE_EMAIL"],
-            subject=f"FYI: Alteration Approved — Apt {application['apartment']}",
-            body=eddie_approval_email(application),
-            from_alias=ALTERATIONS_EMAIL,
-        )
+        _s = get_settings()
+        eddie_email = _s.get("superintendent_email", "")
+        if eddie_email:
+            send_email(
+                to=eddie_email,
+                subject=f"FYI: Alteration Approved — Apt {application['apartment']}",
+                body=eddie_approval_email(application),
+                from_alias=ALTERATIONS_EMAIL,
+            )
         # CC Orsid building mgmt
-        for addr in os.environ.get("ORSID_CC_EMAILS", "").split(","):
+        orsid_coord = _s.get("orsid_coordinator_email", "")
+        for addr in orsid_coord.split(","):
             if addr.strip():
                 send_email(
                     to=addr.strip(),
@@ -526,14 +533,17 @@ def admin_complete(app_id):
             from_alias=ALTERATIONS_EMAIL,
         )
         # FYI to Eddie
-        send_email(
-            to=os.environ["EDDIE_EMAIL"],
-            subject=f"FYI: Alteration Complete — Apt {application['apartment']}",
-            body=(f"<p>Hi Eddie,</p><p>The alteration for <strong>Apt {application['apartment']}</strong> "
-                  f"({application.get('shareholder_name')}) is now complete and closed out. "
-                  f"The security deposit is being returned to the shareholder via Orsid.</p>"),
-            from_alias=ALTERATIONS_EMAIL,
-        )
+        _s = get_settings()
+        eddie_email = _s.get("superintendent_email", "")
+        if eddie_email:
+            send_email(
+                to=eddie_email,
+                subject=f"FYI: Alteration Complete — Apt {application['apartment']}",
+                body=(f"<p>Hi Eddie,</p><p>The alteration for <strong>Apt {application['apartment']}</strong> "
+                      f"({application.get('shareholder_name')}) is now complete and closed out. "
+                      f"The security deposit is being returned to the shareholder via Orsid.</p>"),
+                from_alias=ALTERATIONS_EMAIL,
+            )
         log_event(app_id, "Status: Complete",
                   f"Project complete. Deposit return confirmed. "
                   f"Shareholder and Eddie notified.",
@@ -599,9 +609,10 @@ def admin_bill_fee(app_id):
         flash("Application not found.", "error")
         return redirect(url_for("admin_dashboard"))
 
-    ORSID_FEE_TO = "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com"
+    _s = get_settings()
+    ORSID_FEE_TO = _s.get("orsid_fee_billing_emails", "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com")
     shareholder_email = app_data.get("shareholder_email", "")
-    ORSID_FEE_CC = ",".join(filter(None, ["cmcgrath@orsidny.com", shareholder_email]))
+    ORSID_FEE_CC = ",".join(filter(None, [_s.get("orsid_coordinator_email", ""), shareholder_email]))
 
     try:
         body = application_fee_billing_email(app_data)
@@ -700,11 +711,14 @@ def admin_settings():
 @require_board_login
 def admin_settings_save():
     updates = {
-        "engineer_1_label":  request.form.get("engineer_1_label", "").strip(),
-        "engineer_1_emails": request.form.get("engineer_1_emails", "").strip(),
-        "engineer_2_label":  request.form.get("engineer_2_label", "").strip(),
-        "engineer_2_email":  request.form.get("engineer_2_email", "").strip(),
-        "admin_email":       request.form.get("admin_email", "").strip(),
+        "engineer_1_label":           request.form.get("engineer_1_label", "").strip(),
+        "engineer_1_emails":          request.form.get("engineer_1_emails", "").strip(),
+        "engineer_2_label":           request.form.get("engineer_2_label", "").strip(),
+        "engineer_2_email":           request.form.get("engineer_2_email", "").strip(),
+        "admin_email":                request.form.get("admin_email", "").strip(),
+        "superintendent_email":       request.form.get("superintendent_email", "").strip(),
+        "orsid_coordinator_email":    request.form.get("orsid_coordinator_email", "").strip(),
+        "orsid_fee_billing_emails":   request.form.get("orsid_fee_billing_emails", "").strip(),
     }
     try:
         save_settings(updates)

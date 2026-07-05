@@ -182,13 +182,16 @@ def get_application_log(app_id: str) -> list:
 # ── Settings (separate "Settings" tab) ────────────────────────────────────────
 
 _SETTINGS_DEFAULTS = {
-    "engineer_1_key":    "Melone",
-    "engineer_1_label":  "Melone Architects (Jeremy Welsh + Nick Melone)",
-    "engineer_1_emails": "",
-    "engineer_2_key":    "Capobianco",
-    "engineer_2_label":  "Capobianco Group (Thomas Capobianco, P.E.)",
-    "engineer_2_email":  "",
-    "admin_email":       "board@433w34.com",
+    "engineer_1_key":            "Melone",
+    "engineer_1_label":          "Melone Architects (Jeremy Welsh + Nick Melone)",
+    "engineer_1_emails":         "",
+    "engineer_2_key":            "Capobianco",
+    "engineer_2_label":          "Capobianco Group (Thomas Capobianco, P.E.)",
+    "engineer_2_email":          "",
+    "admin_email":               "board@433w34.com",
+    "superintendent_email":      "",
+    "orsid_coordinator_email":   "",
+    "orsid_fee_billing_emails":  "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com",
 }
 
 
@@ -203,9 +206,11 @@ def _ensure_settings_tab():
         ).execute()
         # Seed with defaults, pulling from env vars for smooth migration
         seed = dict(_SETTINGS_DEFAULTS)
-        seed["engineer_1_emails"] = os.environ.get("MELONE_EMAILS", "")
-        seed["engineer_2_email"]  = os.environ.get("CAPOBIANCO_EMAIL", "")
-        seed["admin_email"]       = os.environ.get("ADMIN_EMAIL", "board@433w34.com")
+        seed["engineer_1_emails"]        = os.environ.get("MELONE_EMAILS", "")
+        seed["engineer_2_email"]         = os.environ.get("CAPOBIANCO_EMAIL", "")
+        seed["admin_email"]              = os.environ.get("ADMIN_EMAIL", "board@433w34.com")
+        seed["superintendent_email"]     = os.environ.get("EDDIE_EMAIL", "")
+        seed["orsid_coordinator_email"]  = os.environ.get("ORSID_CC_EMAILS", "")
         header = [["key", "value", "updated_at"]]
         rows = [[k, v, datetime.now().strftime("%Y-%m-%d")] for k, v in seed.items()]
         svc.spreadsheets().values().update(
@@ -226,18 +231,22 @@ def get_settings() -> dict:
         rows = result.get("values", [])
         # Start with hardcoded defaults, then layer env vars, then sheet values
         settings = dict(_SETTINGS_DEFAULTS)
-        settings["engineer_1_emails"] = os.environ.get("MELONE_EMAILS", settings["engineer_1_emails"])
-        settings["engineer_2_email"]  = os.environ.get("CAPOBIANCO_EMAIL", settings["engineer_2_email"])
-        settings["admin_email"]       = os.environ.get("ADMIN_EMAIL", settings["admin_email"])
+        settings["engineer_1_emails"]       = os.environ.get("MELONE_EMAILS", settings["engineer_1_emails"])
+        settings["engineer_2_email"]        = os.environ.get("CAPOBIANCO_EMAIL", settings["engineer_2_email"])
+        settings["admin_email"]             = os.environ.get("ADMIN_EMAIL", settings["admin_email"])
+        settings["superintendent_email"]    = os.environ.get("EDDIE_EMAIL", settings["superintendent_email"])
+        settings["orsid_coordinator_email"] = os.environ.get("ORSID_CC_EMAILS", settings["orsid_coordinator_email"])
         for row in rows[1:]:
             if len(row) >= 2 and row[0]:
                 settings[row[0]] = row[1]
         return settings
     except Exception:
         settings = dict(_SETTINGS_DEFAULTS)
-        settings["engineer_1_emails"] = os.environ.get("MELONE_EMAILS", "")
-        settings["engineer_2_email"]  = os.environ.get("CAPOBIANCO_EMAIL", "")
-        settings["admin_email"]       = os.environ.get("ADMIN_EMAIL", "board@433w34.com")
+        settings["engineer_1_emails"]       = os.environ.get("MELONE_EMAILS", "")
+        settings["engineer_2_email"]        = os.environ.get("CAPOBIANCO_EMAIL", "")
+        settings["admin_email"]             = os.environ.get("ADMIN_EMAIL", "board@433w34.com")
+        settings["superintendent_email"]    = os.environ.get("EDDIE_EMAIL", "")
+        settings["orsid_coordinator_email"] = os.environ.get("ORSID_CC_EMAILS", "")
         return settings
 
 
