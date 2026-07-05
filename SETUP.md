@@ -7,7 +7,7 @@ You'll need about 45–60 minutes the first time.
 
 ## What You'll Set Up
 
-1. `alterations@433w34.com` email address (Google Workspace)
+1. `apps@433w34.com` email address (Google Workspace)
 2. Google Cloud project + API access
 3. Anthropic API key (for the AI review)
 4. Google Sheet and Drive folder for storing applications
@@ -15,11 +15,11 @@ You'll need about 45–60 minutes the first time.
 
 ---
 
-## Step 1 — Create alterations@433w34.com
+## Step 1 — Create apps@433w34.com
 
 1. Go to [admin.google.com](https://admin.google.com) and sign in as your workspace admin
 2. Go to **Directory → Users → Add new user**
-3. Create a user with the email `alterations@433w34.com`
+3. Create a user with the email `apps@433w34.com`
 4. Set a strong password and save it somewhere safe
 5. You don't need to actively monitor this inbox — the app uses it as a send-from address
 
@@ -104,7 +104,7 @@ GOOGLE_SHEET_ID=...                   ← from Step 4
 GOOGLE_DRIVE_FOLDER_ID=...            ← from Step 4
 SECRET_KEY=pick-any-long-random-string-here-at-least-32-characters
 BOARD_EMAIL=board@433w34.com
-ALTERATIONS_EMAIL=alterations@433w34.com
+ALTERATIONS_EMAIL=apps@433w34.com
 EDDIE_EMAIL=rodriguezeddie374@gmail.com
 ORSID_CC_EMAILS=cmcgrath@orsidny.com,jdevall@orsidny.com
 CAPOBIANCO_EMAIL=tom.sr@capobiancogroup.com

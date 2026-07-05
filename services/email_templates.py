@@ -6,7 +6,7 @@ import os
 import json
 
 BUILDING = os.environ.get("BUILDING_NAME", "433 West 34th Street Owners Corp.")
-ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "alterations@433w34.com")
+ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "apps@433w34.com")
 BOARD_EMAIL = os.environ.get("BOARD_EMAIL", "board@433w34.com")
 APP_URL = os.environ.get("APP_URL", "https://four33-alteration-app.onrender.com")
 

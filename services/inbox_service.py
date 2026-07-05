@@ -1,5 +1,5 @@
 """
-Bidirectional inbox processing for alterations@433w34.com.
+Bidirectional inbox processing for apps@433w34.com.
 
 Two routing directions, both matched by App ID in the subject line:
 
@@ -34,7 +34,7 @@ _APP_ID_RE = re.compile(r'ALT-\d{6}-[A-Z0-9]{5}')
 _FOLDER_ID_RE = re.compile(r'/folders/([a-zA-Z0-9_-]+)')
 _EMAIL_ADDR_RE = re.compile(r'[\w.+-]+@[\w-]+\.[a-zA-Z]+')
 
-ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "alterations@433w34.com")
+ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "apps@433w34.com")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "")
 
 

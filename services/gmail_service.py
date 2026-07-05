@@ -8,7 +8,7 @@ from typing import Optional
 from googleapiclient.discovery import build
 from services.google_auth import get_credentials
 
-ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "alterations@433w34.com")
+ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "apps@433w34.com")
 
 
 def _svc():

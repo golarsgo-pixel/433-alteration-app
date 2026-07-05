@@ -206,7 +206,7 @@ Write a brief, professional cover note to accompany the original attached report
 3. Include a clear instruction block telling the shareholder to:
    - Review the ATTACHED report — it is the official document, not this summary
    - Respond to each item in the same numbered sequence as the report
-   - Send their written response to alterations@433w34.com with Application ID
+   - Send their written response to apps@433w34.com with Application ID
      {application_data.get('app_id')} in the subject line
    - Include their contractor's signature/stamp on any technical responses (drawings, specs)
    - Respond within 10 business days
@@ -409,7 +409,7 @@ Please draft a clear, professional forwarding email to the shareholder and their
 1. Briefly explains what the architect's report is and what they need to do
 2. Lists each item the architect is asking about, in plain English (numbered)
 3. Explains that they should respond to each item in writing, with any supporting documentation
-4. Reminds them to reply to alterations@433w34.com and to include their company stamp/signature on any technical responses
+4. Reminds them to reply to apps@433w34.com and to include their company stamp/signature on any technical responses
 5. Sets a polite but firm expectation for timely response (suggest 10 business days)
 
 Write in a professional but warm tone. Sign as "433 West 34th Street Board of Directors".
