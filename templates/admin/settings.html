@@ -18,55 +18,24 @@
     {% endif %}
   {% endwith %}
 
-  <form method="POST" action="/admin/settings">
+  <form method="POST" action="/admin/settings" id="settings-form">
+    <input type="hidden" name="engineers_json" id="engineers-json-input">
 
     <!-- Designated Engineers -->
     <div class="card">
       <h2>Designated Engineers</h2>
       <p style="font-size:13px; color:#666; margin-bottom:20px;">
-        These names and email addresses are used when assigning and notifying engineers.
+        Engineers available for assignment. Display names appear in the assignment dropdown and in emails.
         Changes take effect immediately — no redeploy needed.
       </p>
 
-      <h3 style="margin-bottom:14px;">Engineer 1</h3>
-      <div class="form-row" style="margin-bottom:12px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Display Name
-            <span class="hint">Shown in dropdown and emails</span>
-          </label>
-          <input type="text" name="engineer_1_label"
-                 value="{{ settings.get('engineer_1_label', '') }}"
-                 placeholder="e.g. Melone Architects (Jeremy Welsh + Nick Melone)">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Email Address(es)
-            <span class="hint">Comma-separated if multiple</span>
-          </label>
-          <input type="text" name="engineer_1_emails"
-                 value="{{ settings.get('engineer_1_emails', '') }}"
-                 placeholder="e.g. jwelsh@firm.com,nmelone@firm.com">
-        </div>
-      </div>
+      <div id="engineers-list"></div>
 
-      <hr class="section-divider">
-
-      <h3 style="margin-bottom:14px;">Engineer 2</h3>
-      <div class="form-row" style="margin-bottom:0;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Display Name
-            <span class="hint">Shown in dropdown and emails</span>
-          </label>
-          <input type="text" name="engineer_2_label"
-                 value="{{ settings.get('engineer_2_label', '') }}"
-                 placeholder="e.g. Capobianco Group (Thomas Capobianco, P.E.)">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Email Address</label>
-          <input type="text" name="engineer_2_email"
-                 value="{{ settings.get('engineer_2_email', '') }}"
-                 placeholder="e.g. tcapobianco@firm.com">
-        </div>
-      </div>
+      <button type="button" id="add-engineer-btn"
+              style="margin-top:4px; background:none; border:1px dashed #aaa; border-radius:5px;
+                     padding:8px 16px; font-size:13px; color:#666; cursor:pointer; width:100%;">
+        + Add Engineer
+      </button>
     </div>
 
     <!-- Building & Managing Agent Contacts -->
@@ -77,10 +46,10 @@
         Changes take effect immediately — no redeploy needed.
       </p>
 
-      <h3 style="margin-bottom:14px;">Building Superintendent</h3>
-      <div class="form-group" style="max-width:400px; margin-bottom:20px;">
+      <h3 style="margin-bottom:14px;">Resident Manager</h3>
+      <div class="form-group" style="max-width:420px; margin-bottom:24px;">
         <label>Email Address
-          <span class="hint">Gets FYI on new submissions, approvals, and project completion</span>
+          <span class="hint">FYI on new submissions, approvals, and project completion</span>
         </label>
         <input type="text" name="superintendent_email"
                value="{{ settings.get('superintendent_email', '') }}"
@@ -89,10 +58,10 @@
 
       <hr class="section-divider">
 
-      <h3 style="margin-bottom:14px;">Orsid — Renovations Coordinator</h3>
-      <div class="form-group" style="max-width:400px; margin-bottom:20px;">
+      <h3 style="margin-bottom:14px;">Orsid Account Executive</h3>
+      <div class="form-group" style="max-width:420px; margin-bottom:24px;">
         <label>Email Address
-          <span class="hint">CC'd on new submission alerts and application fee billing</span>
+          <span class="hint">CC'd on new submission board alerts and application fee billing</span>
         </label>
         <input type="text" name="orsid_coordinator_email"
                value="{{ settings.get('orsid_coordinator_email', '') }}"
@@ -102,10 +71,12 @@
       <hr class="section-divider">
 
       <h3 style="margin-bottom:14px;">Orsid — Fee Billing</h3>
+      <p style="font-size:13px; color:#666; margin-bottom:12px;">
+        Primary recipients of $250 application fee billing requests (Admin Assistant + Bookkeepers).
+        Comma-separated.
+      </p>
       <div class="form-group">
-        <label>Email Address(es)
-          <span class="hint">Primary recipients of $250 application fee billing requests — comma-separated</span>
-        </label>
+        <label>Email Address(es)</label>
         <input type="text" name="orsid_fee_billing_emails"
                value="{{ settings.get('orsid_fee_billing_emails', '') }}"
                placeholder="e.g. mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com">
@@ -116,11 +87,11 @@
     <div class="card">
       <h2>Board Operator Inbox</h2>
       <p style="font-size:13px; color:#666; margin-bottom:20px;">
-        All board alert emails are delivered here. This is a shared inbox representing the board
-        as an institution — not a personal address. The current board president monitors it, but
-        it stays the same when board membership changes.
+        All board alert emails are delivered here. This is a shared institutional inbox —
+        not a personal address. The current board president monitors it, but it stays the same
+        when board membership or the president role changes.
       </p>
-      <div class="form-group" style="max-width:400px;">
+      <div class="form-group" style="max-width:420px;">
         <label>Operator Inbox</label>
         <input type="email" name="admin_email"
                value="{{ settings.get('admin_email', 'board@433w34.com') }}"
@@ -134,4 +105,105 @@
 
   </form>
 </div>
+
+{% block scripts %}
+<script>
+let engineers = {{ engineers_list | tojson }};
+
+function escAttr(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function rowStyle() {
+  return 'padding:16px; border:1px solid #e0e4e8; border-radius:6px; margin-bottom:10px; background:#fafbfc;';
+}
+
+function renderEngineers() {
+  const list = document.getElementById('engineers-list');
+  if (engineers.length === 0) {
+    list.innerHTML = '<p style="font-size:13px; color:#aaa; margin-bottom:12px;">No engineers configured yet. Add one below.</p>';
+    return;
+  }
+  list.innerHTML = engineers.map((eng, idx) => `
+    <div class="engineer-row" style="${rowStyle()}">
+      <input type="hidden" class="eng-key" value="${escAttr(eng.key)}">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:10px;">
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; margin-bottom:5px; color:#444;">Display Name</label>
+          <input type="text" class="eng-label"
+                 value="${escAttr(eng.label)}"
+                 placeholder="e.g. Melone Architects (Jeremy Welsh + Nick Melone)"
+                 style="width:100%; padding:9px 12px; border:1px solid #d0d7e0; border-radius:5px; font-size:14px; font-family:inherit;">
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; margin-bottom:5px; color:#444;">
+            Email(s) <span style="font-weight:normal; color:#888; font-size:12px; margin-left:4px;">comma-separated if multiple</span>
+          </label>
+          <input type="text" class="eng-emails"
+                 value="${escAttr(eng.emails)}"
+                 placeholder="engineer@firm.com"
+                 style="width:100%; padding:9px 12px; border:1px solid #d0d7e0; border-radius:5px; font-size:14px; font-family:inherit;">
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:11px; color:#aaa;">
+          Internal ID: <strong class="eng-key-display">${escHtml(eng.key) || '<em>auto-set on save</em>'}</strong>
+          — matched to existing application records
+        </span>
+        <button type="button" class="remove-btn"
+                style="background:none; border:none; color:#c0392b; font-size:13px; cursor:pointer; padding:4px 8px;"
+                data-idx="${idx}">
+          Remove
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  // Hide remove button if only one engineer
+  document.querySelectorAll('#engineers-list .remove-btn').forEach(btn => {
+    btn.style.display = engineers.length > 1 ? '' : 'none';
+    btn.addEventListener('click', function() {
+      engineers.splice(parseInt(this.dataset.idx), 1);
+      renderEngineers();
+    });
+  });
+
+  // Auto-generate key for rows that don't have one yet
+  document.querySelectorAll('#engineers-list .engineer-row').forEach((row, idx) => {
+    if (!engineers[idx].key) {
+      row.querySelector('.eng-label').addEventListener('input', function() {
+        const key = this.value.split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '');
+        row.querySelector('.eng-key').value = key;
+        row.querySelector('.eng-key-display').textContent = key || '';
+      });
+    }
+  });
+}
+
+document.getElementById('add-engineer-btn').addEventListener('click', function() {
+  engineers.push({key: '', label: '', emails: ''});
+  renderEngineers();
+  // Focus the new label field
+  const rows = document.querySelectorAll('#engineers-list .engineer-row');
+  if (rows.length) rows[rows.length - 1].querySelector('.eng-label').focus();
+});
+
+document.getElementById('settings-form').addEventListener('submit', function() {
+  const result = [];
+  document.querySelectorAll('#engineers-list .engineer-row').forEach(row => {
+    const label  = row.querySelector('.eng-label').value.trim();
+    const emails = row.querySelector('.eng-emails').value.trim();
+    let   key    = row.querySelector('.eng-key').value.trim();
+    if (!key && label) key = label.split(/\s+/)[0].replace(/[^a-zA-Z0-9]/g, '');
+    if (label || emails) result.push({key, label, emails});
+  });
+  document.getElementById('engineers-json-input').value = JSON.stringify(result);
+});
+
+renderEngineers();
+</script>
+{% endblock %}
 {% endblock %}

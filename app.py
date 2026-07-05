@@ -29,11 +29,30 @@ ALTERATIONS_EMAIL = os.environ["ALTERATIONS_EMAIL"]
 
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
+def _parse_engineers(settings: dict) -> list:
+    import json as _json
+    raw = settings.get("engineers_json", "")
+    if raw:
+        try:
+            return _json.loads(raw)
+        except (ValueError, TypeError):
+            pass
+    # Fallback to legacy individual keys
+    result = []
+    for key_k, label_k, emails_k in [
+        ("engineer_1_key", "engineer_1_label", "engineer_1_emails"),
+        ("engineer_2_key", "engineer_2_label", "engineer_2_email"),
+    ]:
+        k = settings.get(key_k, "")
+        if k:
+            result.append({"key": k, "label": settings.get(label_k, k), "emails": settings.get(emails_k, "")})
+    return result
+
+
 def _engineer_email(settings: dict, engineer_key: str) -> str:
-    if engineer_key == settings.get("engineer_1_key", "Melone"):
-        return settings.get("engineer_1_emails", "").strip()
-    if engineer_key == settings.get("engineer_2_key", "Capobianco"):
-        return settings.get("engineer_2_email", "").strip()
+    for eng in _parse_engineers(settings):
+        if eng.get("key") == engineer_key:
+            return eng.get("emails", "").strip()
     return ""
 
 
@@ -312,10 +331,7 @@ def admin_application(app_id):
     from services.sheets_service import get_application_log
     activity_log = get_application_log(app_id)
     settings = get_settings()
-    engineers = [
-        {"key": settings.get("engineer_1_key", "Melone"),     "label": settings.get("engineer_1_label", "Melone Architects")},
-        {"key": settings.get("engineer_2_key", "Capobianco"), "label": settings.get("engineer_2_label", "Capobianco Group")},
-    ]
+    engineers = [{"key": e["key"], "label": e.get("label", e["key"])} for e in _parse_engineers(settings)]
     return render_template("admin/application.html", app=application, activity_log=activity_log, engineers=engineers)
 
 
@@ -704,17 +720,15 @@ def admin_show_token():
 @require_board_login
 def admin_settings():
     settings = get_settings()
-    return render_template("admin/settings.html", settings=settings)
+    engineers_list = _parse_engineers(settings)
+    return render_template("admin/settings.html", settings=settings, engineers_list=engineers_list)
 
 
 @app.route("/admin/settings", methods=["POST"])
 @require_board_login
 def admin_settings_save():
     updates = {
-        "engineer_1_label":           request.form.get("engineer_1_label", "").strip(),
-        "engineer_1_emails":          request.form.get("engineer_1_emails", "").strip(),
-        "engineer_2_label":           request.form.get("engineer_2_label", "").strip(),
-        "engineer_2_email":           request.form.get("engineer_2_email", "").strip(),
+        "engineers_json":             request.form.get("engineers_json", "").strip(),
         "admin_email":                request.form.get("admin_email", "").strip(),
         "superintendent_email":       request.form.get("superintendent_email", "").strip(),
         "orsid_coordinator_email":    request.form.get("orsid_coordinator_email", "").strip(),

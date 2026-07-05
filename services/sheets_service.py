@@ -182,16 +182,18 @@ def get_application_log(app_id: str) -> list:
 # ── Settings (separate "Settings" tab) ────────────────────────────────────────
 
 _SETTINGS_DEFAULTS = {
+    "engineers_json":            "",
+    "admin_email":               "board@433w34.com",
+    "superintendent_email":      "",
+    "orsid_coordinator_email":   "",
+    "orsid_fee_billing_emails":  "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com",
+    # Legacy keys kept for fallback only — superseded by engineers_json
     "engineer_1_key":            "Melone",
     "engineer_1_label":          "Melone Architects (Jeremy Welsh + Nick Melone)",
     "engineer_1_emails":         "",
     "engineer_2_key":            "Capobianco",
     "engineer_2_label":          "Capobianco Group (Thomas Capobianco, P.E.)",
     "engineer_2_email":          "",
-    "admin_email":               "board@433w34.com",
-    "superintendent_email":      "",
-    "orsid_coordinator_email":   "",
-    "orsid_fee_billing_emails":  "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com",
 }
 
 
