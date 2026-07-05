@@ -211,8 +211,10 @@ and is the gap to close.
    Jeremy can see the count and follow up individually. No in-app flag or blocking state.
 7. **When 4 approve votes are recorded** → automatic email alert to Jeremy/operator that the
    threshold is met and he can send the official notification.
-8. **Jeremy clicks Approve** in the admin panel → official approval notification goes to
-   shareholder, GC, Eddie, and Orsid.
+8. **Jeremy clicks Approve or Changes Required** in the admin panel:
+   - **Approve** → official approval notification to shareholder, GC, Eddie, and Orsid
+   - **Changes Required** → notification to shareholder explaining exactly what must change
+     and that a revised submission is needed before the application can proceed
 
 ### Key design decisions
 
@@ -225,9 +227,29 @@ and is the gap to close.
   haven't voted. If concerns exist, they're surfaced on WhatsApp before votes come in.
 - **Operator action is separate from the vote.** Jeremy clicking Approve is a designated
   notification action, not a vote. He doesn't vote in the app; he executes the outcome.
-- **Exceptions are handled outside the app.** Minor exceptions (special situations on a door,
-  window replacement, etc.) are decided on WhatsApp and become conditions of approval in the
-  official approval email. They don't need a separate tracked state in the app.
+- **Engineer flags go INTO the board vote, not before it.** The engineer doesn't have approval
+  authority — only the board does. If the engineer flags an issue (e.g. mini-split AC doesn't
+  meet building rules), that flag is prominently surfaced in the AI board summary and the board
+  votes knowing about it. Granting the exception = voting approve anyway. Requiring a change =
+  Jeremy sets "Changes Required" after the vote.
+
+### Changes Required — not "Partial Approval"
+
+When the board requires a scope change (or the engineer flags something the board won't grant),
+the status is **Changes Required**, not "Partial Approval." Reason: governance documentation.
+
+A Partial Approval creates a file where the application includes something that wasn't approved —
+ambiguous for future boards, auditors, or disputes. Changes Required → revised submission →
+clean Approval means the final approved application matches exactly what was done.
+
+In practice: "please resubmit with the mini-split removed" is a minor revision, not starting over.
+The revised submission likely goes straight back to the engineer for a quick re-check rather than
+full re-review. The notification to the shareholder must clearly explain what needs to change and
+that a revised submission is required to proceed.
+
+**Outright denial** (extremely rare — something fundamentally against building rules with no
+possible revision path) uses the same Changes Required status and flow. The distinction lives
+in Jeremy's notes and the notification language, not in a separate app state.
 
 ### Settings additions required
 
