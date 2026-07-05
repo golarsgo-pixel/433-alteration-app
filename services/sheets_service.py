@@ -188,6 +188,7 @@ _SETTINGS_DEFAULTS = {
     "superintendent_email":      "",
     "orsid_coordinator_name":    "",
     "orsid_coordinator_email":   "",
+    "orsid_fee_billing_json":    "",
     "orsid_fee_billing_emails":  "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com",
     # Legacy keys kept for fallback only — superseded by engineers_json
     "engineer_1_key":            "Melone",

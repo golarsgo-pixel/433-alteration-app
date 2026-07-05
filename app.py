@@ -716,12 +716,30 @@ def admin_show_token():
     """
 
 
+def _parse_fee_billing(settings: dict) -> list:
+    import json as _json
+    raw = settings.get("orsid_fee_billing_json", "")
+    if raw:
+        try:
+            return _json.loads(raw)
+        except (ValueError, TypeError):
+            pass
+    # Fallback: convert legacy comma-separated emails to list with no names
+    emails_raw = settings.get("orsid_fee_billing_emails", "")
+    if emails_raw:
+        return [{"name": "", "role": "Bookkeeper", "email": e.strip()}
+                for e in emails_raw.split(",") if e.strip()]
+    return []
+
+
 @app.route("/admin/settings", methods=["GET"])
 @require_board_login
 def admin_settings():
     settings = get_settings()
     engineers_list = _parse_engineers(settings)
-    return render_template("admin/settings.html", settings=settings, engineers_list=engineers_list)
+    fee_billing_list = _parse_fee_billing(settings)
+    return render_template("admin/settings.html", settings=settings,
+                           engineers_list=engineers_list, fee_billing_list=fee_billing_list)
 
 
 @app.route("/admin/settings", methods=["POST"])
@@ -734,6 +752,7 @@ def admin_settings_save():
         "superintendent_email":       request.form.get("superintendent_email", "").strip(),
         "orsid_coordinator_name":     request.form.get("orsid_coordinator_name", "").strip(),
         "orsid_coordinator_email":    request.form.get("orsid_coordinator_email", "").strip(),
+        "orsid_fee_billing_json":     request.form.get("orsid_fee_billing_json", "").strip(),
         "orsid_fee_billing_emails":   request.form.get("orsid_fee_billing_emails", "").strip(),
     }
     try:
