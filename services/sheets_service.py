@@ -177,3 +177,93 @@ def get_application_log(app_id: str) -> list:
         return [e for e in entries if e.get("app_id") == app_id]
     except Exception:
         return []
+
+
+# ── Settings (separate "Settings" tab) ────────────────────────────────────────
+
+_SETTINGS_DEFAULTS = {
+    "engineer_1_key":    "Melone",
+    "engineer_1_label":  "Melone Architects (Jeremy Welsh + Nick Melone)",
+    "engineer_1_emails": "",
+    "engineer_2_key":    "Capobianco",
+    "engineer_2_label":  "Capobianco Group (Thomas Capobianco, P.E.)",
+    "engineer_2_email":  "",
+    "admin_email":       "board@433w34.com",
+}
+
+
+def _ensure_settings_tab():
+    svc = _service()
+    meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
+    sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
+    if "Settings" not in sheet_names:
+        svc.spreadsheets().batchUpdate(
+            spreadsheetId=SHEET_ID,
+            body={"requests": [{"addSheet": {"properties": {"title": "Settings"}}}]},
+        ).execute()
+        # Seed with defaults, pulling from env vars for smooth migration
+        seed = dict(_SETTINGS_DEFAULTS)
+        seed["engineer_1_emails"] = os.environ.get("MELONE_EMAILS", "")
+        seed["engineer_2_email"]  = os.environ.get("CAPOBIANCO_EMAIL", "")
+        seed["admin_email"]       = os.environ.get("ADMIN_EMAIL", "board@433w34.com")
+        header = [["key", "value", "updated_at"]]
+        rows = [[k, v, datetime.now().strftime("%Y-%m-%d")] for k, v in seed.items()]
+        svc.spreadsheets().values().update(
+            spreadsheetId=SHEET_ID,
+            range="Settings!A1",
+            valueInputOption="RAW",
+            body={"values": header + rows},
+        ).execute()
+
+
+def get_settings() -> dict:
+    try:
+        _ensure_settings_tab()
+        svc = _service()
+        result = svc.spreadsheets().values().get(
+            spreadsheetId=SHEET_ID, range="Settings"
+        ).execute()
+        rows = result.get("values", [])
+        # Start with hardcoded defaults, then layer env vars, then sheet values
+        settings = dict(_SETTINGS_DEFAULTS)
+        settings["engineer_1_emails"] = os.environ.get("MELONE_EMAILS", settings["engineer_1_emails"])
+        settings["engineer_2_email"]  = os.environ.get("CAPOBIANCO_EMAIL", settings["engineer_2_email"])
+        settings["admin_email"]       = os.environ.get("ADMIN_EMAIL", settings["admin_email"])
+        for row in rows[1:]:
+            if len(row) >= 2 and row[0]:
+                settings[row[0]] = row[1]
+        return settings
+    except Exception:
+        settings = dict(_SETTINGS_DEFAULTS)
+        settings["engineer_1_emails"] = os.environ.get("MELONE_EMAILS", "")
+        settings["engineer_2_email"]  = os.environ.get("CAPOBIANCO_EMAIL", "")
+        settings["admin_email"]       = os.environ.get("ADMIN_EMAIL", "board@433w34.com")
+        return settings
+
+
+def save_settings(updates: dict):
+    _ensure_settings_tab()
+    svc = _service()
+    result = svc.spreadsheets().values().get(
+        spreadsheetId=SHEET_ID, range="Settings"
+    ).execute()
+    rows = result.get("values", [])
+    existing_keys = {row[0]: i + 2 for i, row in enumerate(rows[1:]) if row}
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    for key, value in updates.items():
+        if key in existing_keys:
+            row_num = existing_keys[key]
+            svc.spreadsheets().values().update(
+                spreadsheetId=SHEET_ID,
+                range=f"Settings!B{row_num}:C{row_num}",
+                valueInputOption="RAW",
+                body={"values": [[str(value), now]]},
+            ).execute()
+        else:
+            svc.spreadsheets().values().append(
+                spreadsheetId=SHEET_ID,
+                range="Settings!A1",
+                valueInputOption="RAW",
+                insertDataOption="INSERT_ROWS",
+                body={"values": [[key, str(value), now]]},
+            ).execute()

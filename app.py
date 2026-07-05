@@ -9,7 +9,7 @@ from flask import (
 from dotenv import load_dotenv
 from services.google_auth import require_board_login, get_auth_url, handle_callback
 from services.drive_service import create_application_folder, upload_file
-from services.sheets_service import append_application, update_application_field, get_all_applications, get_application, log_event
+from services.sheets_service import append_application, update_application_field, get_all_applications, get_application, log_event, get_settings, save_settings
 from services.gmail_service import send_email
 from services.claude_service import review_application
 from services.email_templates import (
@@ -28,6 +28,14 @@ ADMIN_EMAIL = os.environ["ADMIN_EMAIL"]
 ALTERATIONS_EMAIL = os.environ["ALTERATIONS_EMAIL"]
 
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
+
+def _engineer_email(settings: dict, engineer_key: str) -> str:
+    if engineer_key == settings.get("engineer_1_key", "Melone"):
+        return settings.get("engineer_1_emails", "").strip()
+    if engineer_key == settings.get("engineer_2_key", "Capobianco"):
+        return settings.get("engineer_2_email", "").strip()
+    return ""
+
 
 @app.template_filter('comma')
 def comma_filter(value):
@@ -300,7 +308,12 @@ def admin_application(app_id):
         return redirect(url_for("admin_dashboard"))
     from services.sheets_service import get_application_log
     activity_log = get_application_log(app_id)
-    return render_template("admin/application.html", app=application, activity_log=activity_log)
+    settings = get_settings()
+    engineers = [
+        {"key": settings.get("engineer_1_key", "Melone"),     "label": settings.get("engineer_1_label", "Melone Architects")},
+        {"key": settings.get("engineer_2_key", "Capobianco"), "label": settings.get("engineer_2_label", "Capobianco Group")},
+    ]
+    return render_template("admin/application.html", app=application, activity_log=activity_log, engineers=engineers)
 
 
 @app.route("/admin/application/<app_id>/assign", methods=["POST"])
@@ -314,9 +327,11 @@ def admin_assign(app_id):
         update_application_field(app_id, "expediting", expediting)
         update_application_field(app_id, "status", "Pending Assignment")
 
-        melone_emails = os.environ.get("MELONE_EMAILS", "").split(",")
-        capobianco_email = os.environ.get("CAPOBIANCO_EMAIL", "")
-        to_email = ",".join(melone_emails) if architect == "Melone" else capobianco_email
+        settings = get_settings()
+        to_email = _engineer_email(settings, architect)
+        if not to_email:
+            flash(f"No email address configured for {architect}. Update Settings before notifying.", "error")
+            return redirect(url_for("admin_application", app_id=app_id))
 
         send_email(
             to=to_email,
@@ -345,9 +360,11 @@ def admin_send_package(app_id):
             flash("No Designated Engineer assigned — assign one first.", "error")
             return redirect(url_for("admin_application", app_id=app_id))
 
-        melone_emails = os.environ.get("MELONE_EMAILS", "").split(",")
-        capobianco_email = os.environ.get("CAPOBIANCO_EMAIL", "")
-        to_email = ",".join(melone_emails) if architect == "Melone" else capobianco_email
+        settings = get_settings()
+        to_email = _engineer_email(settings, architect)
+        if not to_email:
+            flash(f"No email address configured for {architect}. Update Settings before sending.", "error")
+            return redirect(url_for("admin_application", app_id=app_id))
 
         send_email(
             to=to_email,
@@ -670,6 +687,31 @@ def admin_show_token():
      else "<p style='color:red;'>No token.json found on disk — re-authorize first at <a href='/auth/login'>/auth/login</a>.</p>"}
     </body></html>
     """
+
+
+@app.route("/admin/settings", methods=["GET"])
+@require_board_login
+def admin_settings():
+    settings = get_settings()
+    return render_template("admin/settings.html", settings=settings)
+
+
+@app.route("/admin/settings", methods=["POST"])
+@require_board_login
+def admin_settings_save():
+    updates = {
+        "engineer_1_label":  request.form.get("engineer_1_label", "").strip(),
+        "engineer_1_emails": request.form.get("engineer_1_emails", "").strip(),
+        "engineer_2_label":  request.form.get("engineer_2_label", "").strip(),
+        "engineer_2_email":  request.form.get("engineer_2_email", "").strip(),
+        "admin_email":       request.form.get("admin_email", "").strip(),
+    }
+    try:
+        save_settings(updates)
+        flash("Settings saved.", "success")
+    except Exception as e:
+        flash(f"Could not save settings: {e}", "error")
+    return redirect(url_for("admin_settings"))
 
 
 if __name__ == "__main__":

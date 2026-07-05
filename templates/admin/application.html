@@ -153,12 +153,11 @@
             <label>Designated Engineer</label>
             <select name="architect" required>
               <option value="">— Select —</option>
-              <option value="Melone" {{ 'selected' if app.architect_assigned == 'Melone' }}>
-                Melone Architects (Jeremy Welsh + Nick Melone)
+              {% for eng in engineers %}
+              <option value="{{ eng.key }}" {{ 'selected' if app.architect_assigned == eng.key }}>
+                {{ eng.label }}
               </option>
-              <option value="Capobianco" {{ 'selected' if app.architect_assigned == 'Capobianco' }}>
-                Capobianco Group (Thomas Capobianco, P.E.)
-              </option>
+              {% endfor %}
             </select>
           </div>
           <div class="form-group">

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Settings — Admin{% endblock %}
+{% block content %}
+<div class="container">
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div>
+      <a href="/admin" style="font-size:13px; color:#888;">← Dashboard</a>
+      <h2 style="font-size:22px; color:#1a3a5c; margin-top:4px;">Settings</h2>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="/admin/settings">
+
+    <!-- Designated Engineers -->
+    <div class="card">
+      <h2>Designated Engineers</h2>
+      <p style="font-size:13px; color:#666; margin-bottom:20px;">
+        These names and email addresses are used when assigning and notifying engineers.
+        Changes take effect immediately — no redeploy needed.
+      </p>
+
+      <h3 style="margin-bottom:14px;">Engineer 1</h3>
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Display Name
+            <span class="hint">Shown in dropdown and emails</span>
+          </label>
+          <input type="text" name="engineer_1_label"
+                 value="{{ settings.get('engineer_1_label', '') }}"
+                 placeholder="e.g. Melone Architects (Jeremy Welsh + Nick Melone)">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Email Address(es)
+            <span class="hint">Comma-separated if multiple</span>
+          </label>
+          <input type="text" name="engineer_1_emails"
+                 value="{{ settings.get('engineer_1_emails', '') }}"
+                 placeholder="e.g. jwelsh@firm.com,nmelone@firm.com">
+        </div>
+      </div>
+
+      <hr class="section-divider">
+
+      <h3 style="margin-bottom:14px;">Engineer 2</h3>
+      <div class="form-row" style="margin-bottom:0;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Display Name
+            <span class="hint">Shown in dropdown and emails</span>
+          </label>
+          <input type="text" name="engineer_2_label"
+                 value="{{ settings.get('engineer_2_label', '') }}"
+                 placeholder="e.g. Capobianco Group (Thomas Capobianco, P.E.)">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Email Address</label>
+          <input type="text" name="engineer_2_email"
+                 value="{{ settings.get('engineer_2_email', '') }}"
+                 placeholder="e.g. tcapobianco@firm.com">
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Settings -->
+    <div class="card">
+      <h2>Notification Settings</h2>
+      <p style="font-size:13px; color:#666; margin-bottom:20px;">
+        Board alert emails (new submissions, scope changes, approvals) are sent here.
+        This should be a shared inbox monitored by the current board president.
+      </p>
+      <div class="form-group" style="max-width:400px;">
+        <label>Board Admin Email</label>
+        <input type="email" name="admin_email"
+               value="{{ settings.get('admin_email', 'board@433w34.com') }}"
+               placeholder="board@433w34.com">
+      </div>
+    </div>
+
+    <div style="text-align:right;">
+      <button type="submit" class="btn btn-primary">Save Settings</button>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
