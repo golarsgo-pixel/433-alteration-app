@@ -47,33 +47,49 @@
       </p>
 
       <h3 style="margin-bottom:14px;">Resident Manager</h3>
-      <div class="form-group" style="max-width:420px; margin-bottom:24px;">
-        <label>Email Address
-          <span class="hint">FYI on new submissions, approvals, and project completion</span>
-        </label>
-        <input type="text" name="superintendent_email"
-               value="{{ settings.get('superintendent_email', '') }}"
-               placeholder="e.g. eddie@433w34.com">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:840px; margin-bottom:24px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Name</label>
+          <input type="text" name="superintendent_name"
+                 value="{{ settings.get('superintendent_name', '') }}"
+                 placeholder="e.g. Eddie Gonzalez">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Email Address
+            <span class="hint">FYI on new submissions, approvals, and project completion</span>
+          </label>
+          <input type="text" name="superintendent_email"
+                 value="{{ settings.get('superintendent_email', '') }}"
+                 placeholder="e.g. eddie@433w34.com">
+        </div>
       </div>
 
       <hr class="section-divider">
 
       <h3 style="margin-bottom:14px;">Orsid Account Executive</h3>
-      <div class="form-group" style="max-width:420px; margin-bottom:24px;">
-        <label>Email Address
-          <span class="hint">CC'd on new submission board alerts and application fee billing</span>
-        </label>
-        <input type="text" name="orsid_coordinator_email"
-               value="{{ settings.get('orsid_coordinator_email', '') }}"
-               placeholder="e.g. cmcgrath@orsidny.com">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:840px; margin-bottom:24px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Name</label>
+          <input type="text" name="orsid_coordinator_name"
+                 value="{{ settings.get('orsid_coordinator_name', '') }}"
+                 placeholder="e.g. Connor McGrath">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Email Address
+            <span class="hint">CC'd on new submission board alerts and application fee billing</span>
+          </label>
+          <input type="text" name="orsid_coordinator_email"
+                 value="{{ settings.get('orsid_coordinator_email', '') }}"
+                 placeholder="e.g. cmcgrath@orsidny.com">
+        </div>
       </div>
 
       <hr class="section-divider">
 
       <h3 style="margin-bottom:14px;">Orsid — Fee Billing</h3>
       <p style="font-size:13px; color:#666; margin-bottom:12px;">
-        Primary recipients of $250 application fee billing requests (Admin Assistant + Bookkeepers).
-        Comma-separated.
+        Molly Minter (Admin Assistant), Enriko Dodaj and Livia Behri (Bookkeepers).
+        Primary recipients of $250 application fee billing requests. Comma-separated.
       </p>
       <div class="form-group">
         <label>Email Address(es)</label>

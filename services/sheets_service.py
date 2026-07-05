@@ -184,7 +184,9 @@ def get_application_log(app_id: str) -> list:
 _SETTINGS_DEFAULTS = {
     "engineers_json":            "",
     "admin_email":               "board@433w34.com",
+    "superintendent_name":       "",
     "superintendent_email":      "",
+    "orsid_coordinator_name":    "",
     "orsid_coordinator_email":   "",
     "orsid_fee_billing_emails":  "mminter@orsidny.com,EDODAJ@orsidny.com,lbehri@orsidny.com",
     # Legacy keys kept for fallback only — superseded by engineers_json

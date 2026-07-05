@@ -730,7 +730,9 @@ def admin_settings_save():
     updates = {
         "engineers_json":             request.form.get("engineers_json", "").strip(),
         "admin_email":                request.form.get("admin_email", "").strip(),
+        "superintendent_name":        request.form.get("superintendent_name", "").strip(),
         "superintendent_email":       request.form.get("superintendent_email", "").strip(),
+        "orsid_coordinator_name":     request.form.get("orsid_coordinator_name", "").strip(),
         "orsid_coordinator_email":    request.form.get("orsid_coordinator_email", "").strip(),
         "orsid_fee_billing_emails":   request.form.get("orsid_fee_billing_emails", "").strip(),
     }
