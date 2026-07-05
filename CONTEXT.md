@@ -106,6 +106,13 @@ ADMIN_EMAIL is where board action alerts go (board@433w34.com, Jeremy's inbox).
 They're separate env vars so the app can send alerts to the right place without conflating
 the service account with Jeremy's personal board inbox.
 
+### The Operator concept
+`board@433w34.com` is the **institutional operator inbox** — it represents the co-op board as an
+institution, not any individual. The current board president monitors it, but the address never
+changes when board membership or the president role changes. Individual board members are not tracked
+as separate email recipients anywhere in the app. When adding new notification logic, always address
+it to the operator inbox, not to a named person's email.
+
 ### Riser flag
 The Claude AI review checks for riser risk (any plumbing work near building risers).
 If flagged, a warning banner appears on the shareholder's status page:
@@ -120,7 +127,7 @@ reminder for the board too.
 | Component | Platform |
 |-----------|----------|
 | Web app | Python / Flask |
-| Hosting | Render.com (free tier) |
+| Hosting | Render.com (Starter, $7/month) |
 | Code repository | GitHub (private): golarsgo-pixel/433-alteration-app |
 | Documents | Google Drive (folder per application) |
 | Application data | Google Sheets (one row per application) |
@@ -247,11 +254,87 @@ argument — the Gmail API and MIME headers handle it correctly. Never loop.
 
 ---
 
+## Design Principles: Configurability & Operational Settings
+
+### Secrets vs. operational config — what goes where
+Two categories of configuration, stored in two different places:
+
+| Type | Where | Examples |
+|------|-------|---------|
+| **Secrets** | Render env vars only | `SECRET_KEY`, `GOOGLE_TOKEN_JSON`, `CRON_SECRET`, API keys |
+| **Operational config** | Google Sheets Settings tab (editable via `/admin/settings`) | Contact names, email addresses, engineer list |
+
+The rule: if a non-technical board member might ever need to update it (a contact changes, a new engineer is added), it belongs in Settings. If it would be dangerous in the wrong hands or is a credential, it stays in Render env vars and never touches the sheet.
+
+### Settings priority chain
+Settings are resolved in this order (highest priority wins):
+
+```
+Google Sheets Settings tab  →  Render env var  →  Hardcoded default
+```
+
+This means:
+- The sheet always wins once populated — changes via the admin UI take effect immediately
+- Env vars serve as a fallback for values not yet in the sheet (useful during migration)
+- Hardcoded defaults ensure the app never crashes if both are missing
+
+When adding a new configurable value, add it to `_SETTINGS_DEFAULTS` in `sheets_service.py`
+and wire it through `get_settings()` following this pattern.
+
+### Dynamic lists, not fixed slots
+Any config that could ever need a third entry must be stored as a JSON array in the Settings sheet,
+not as `_1` / `_2` fixed keys. We learned this with engineers — starting with `engineer_1_key` /
+`engineer_2_key` meant adding a third firm required a code change. Now `engineers_json` is a list
+and adding a firm is a UI action.
+
+Apply the same pattern to anything list-like: fee billing contacts, future notification groups, etc.
+Store as `[{"key": ..., "label": ..., ...}]` JSON, parse with a `_parse_*()` helper that falls
+back to legacy keys if the JSON key is empty.
+
+### No-redeploy rule for operational changes
+Any contact, label, or workflow setting that might change over time must be editable from the
+`/admin/settings` UI without touching code or Render env vars. Before adding a new hardcoded value
+(name, email, label, toggle), ask: "Would a board member ever need to change this?" If yes, put it
+in Settings.
+
+---
+
+## Design Principles: Templates & Frontend
+
+### Jinja2 auto-escaping — use `&` not `&amp;` in expressions
+Jinja2 auto-escapes HTML inside `{{ }}` expressions. If you write `&amp;` inside an expression,
+it gets double-escaped and renders literally as `&amp;` in the browser.
+
+```html
+<!-- Wrong — renders as "Assign &amp; Notify" -->
+{{ 'Assign &amp; Notify Engineer' }}
+
+<!-- Correct — Jinja2 escapes & to &amp; for you -->
+{{ 'Assign & Notify Engineer' }}
+```
+
+Outside of `{{ }}` expressions (plain HTML), write `&amp;` as normal.
+
+### Currency formatting — always use the `comma` filter
+Any dollar amount that could exceed $999 must use the `| comma` Jinja2 filter to render with
+a thousands separator. The filter is registered in `app.py` and handles strings, ints, and floats.
+
+```html
+${{ app.estimated_cost | comma }}   {# renders as $25,000 not $25000 #}
+```
+
+---
+
 ## Deferred Features (not yet built)
 
 - **Save draft on intake form** — would require server-side session storage or localStorage
 - **Auto-reply to inbound emails** — monitor apps@433w34.com, pass to Claude, send response
 - **Architect fee tracking** — currently handled by Orsid via maintenance charges, not in app
+- **Stripe application fee ($250)** — collect at submission; do alongside the ownership migrations below
+- **GitHub repo → 433-owned org** — currently under golarsgo-pixel (Jeremy's personal account);
+  move to a 433 W 34 St org so it survives board member transitions
+- **Render account → 433-owned account** — same reason; do at the same time as GitHub migration
+  so both happen in one coordinated handoff
 
 ---
 
