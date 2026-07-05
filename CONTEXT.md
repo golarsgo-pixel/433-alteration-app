@@ -128,8 +128,8 @@ reminder for the board too.
 | AI review | Anthropic Claude API |
 | Auth | Google OAuth 2.0 (board login only) |
 
-**Render note:** Free tier sleeps after 15 min inactivity — first request after idle takes ~30 sec.
-Upgrade to $7/month plan if that becomes annoying.
+**Render note:** Running on Starter plan ($7/month, 512 MB RAM, no sleep). Plan to upgrade to
+Pro when real users are active and memory headroom becomes a concern.
 
 ---
 
@@ -164,6 +164,86 @@ On startup, `google_auth.py` writes it to `token.json` automatically if the file
 If Google ever revokes the token (rare), visit `https://four33-alteration-app.onrender.com/auth/login`,
 log in with `apps@433w34.com`, then update the `GOOGLE_TOKEN_JSON` env var on Render
 with the new contents of your local `token.json`.
+
+---
+
+## Design Principles: API Efficiency & Render Stability
+
+Render Starter has 512 MB RAM. The Google API client library (`googleapiclient`) is memory-hungry —
+building a service client parses a large discovery document and allocates significant heap. These
+principles must be followed in every new feature and every change to existing code.
+
+### 1. Cache service clients at module level
+Every `build(...)` call fetches and parses the API discovery document. Never call it per-request.
+
+```python
+_client = None
+def _service():
+    global _client
+    if _client is None:
+        _client = build("sheets", "v4", credentials=get_credentials(), cache_discovery=False)
+    return _client
+```
+
+This pattern exists in `sheets_service.py`, `gmail_service.py`, and `drive_service.py`.
+**If you add a new Google API service, follow the same pattern.**
+
+### 2. Batch Sheets writes — never loop individual `.update()` calls
+Each `spreadsheets().values().update()` call is a separate HTTP round trip.
+When writing multiple cells or rows, always use `.values().batchUpdate()` with a `data` array.
+
+Bad:
+```python
+for key, value in updates.items():
+    svc.spreadsheets().values().update(...).execute()  # N calls
+```
+
+Good:
+```python
+svc.spreadsheets().values().batchUpdate(
+    spreadsheetId=SHEET_ID,
+    body={"valueInputOption": "RAW", "data": [{"range": ..., "values": ...}, ...]},
+).execute()  # 1 call
+```
+
+`save_settings()` and `update_application_fields()` both implement this correctly.
+`update_application_field()` (singular) delegates to `update_application_fields()` — use the plural
+version directly whenever updating more than one field at once.
+
+### 3. Cache tab existence checks
+`_ensure_log_tab()` and `_ensure_settings_tab()` each do a full `spreadsheets().get()` to verify
+the tab exists. These are called on every `log_event()` and `get_settings()` call. After the first
+run, the tabs never disappear, so the check is wasted work on every subsequent request.
+
+Both functions use a module-level boolean flag (`_log_tab_ready`, `_settings_tab_ready`) that short-
+circuits the check after the first confirmation. **If you add a new tab, follow the same pattern.**
+
+### 4. Do the minimum synchronously on form submit; background everything else
+The `/apply` submission route is the heaviest request in the app: Drive folder creation, file
+uploads, Claude AI review, and multiple emails. Doing all of this before responding to the user
+risks a 30-second+ request, a Render worker timeout, or a process restart losing the whole submission.
+
+**The rule:** save the core application record to Sheets first (takes ~1 second), redirect the user
+immediately, then do everything else in a daemon thread.
+
+```python
+append_application(data)           # Sheets write — data is safe
+threading.Thread(target=_background, args=(...), daemon=True).start()
+return redirect(url_for("submitted", app_id=app_id))  # user sees this immediately
+```
+
+The `_post_submit_background()` function in `app.py` handles Drive → Claude → emails.
+If Render restarts mid-thread, the application row already exists in Sheets and is visible
+in the admin dashboard. The Drive folder, AI review, and emails just need manual follow-up.
+
+**File uploads:** `request.files` streams close when the HTTP request ends. Read all file bytes
+into memory (`file.read()`) before starting the thread, then use `upload_bytes()` in the thread
+instead of `upload_file()`.
+
+### 5. Send one email per recipient group — never loop send_email
+Each `send_email()` call builds a Gmail API round trip. When notifying multiple addresses in the
+same role (e.g. two Orsid coordinators), pass comma-separated addresses as a single `to` or `cc`
+argument — the Gmail API and MIME headers handle it correctly. Never loop.
 
 ---
 
