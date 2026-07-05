@@ -9,7 +9,7 @@ from flask import (
 from dotenv import load_dotenv
 from services.google_auth import require_board_login, get_auth_url, handle_callback
 from services.drive_service import create_application_folder, upload_file
-from services.sheets_service import append_application, update_application_field, get_all_applications, get_application, log_event, get_settings, save_settings
+from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, log_event, get_settings, save_settings
 from services.gmail_service import send_email
 from services.claude_service import review_application
 from services.email_templates import (
@@ -342,9 +342,11 @@ def admin_assign(app_id):
     expediting = request.form.get("expediting", "no")
     try:
         application = get_application(app_id)
-        update_application_field(app_id, "architect_assigned", architect)
-        update_application_field(app_id, "expediting", expediting)
-        update_application_field(app_id, "status", "Pending Assignment")
+        update_application_fields(app_id, {
+            "architect_assigned": architect,
+            "expediting": expediting,
+            "status": "Pending Assignment",
+        })
 
         settings = get_settings()
         to_email = _engineer_email(settings, architect)
@@ -464,16 +466,15 @@ def admin_approve(app_id):
                 body=eddie_approval_email(application),
                 from_alias=ALTERATIONS_EMAIL,
             )
-        # CC Orsid building mgmt
+        # FYI to Orsid coordinator(s) — single email, comma-separated addresses handled by Gmail
         orsid_coord = _s.get("orsid_coordinator_email", "")
-        for addr in orsid_coord.split(","):
-            if addr.strip():
-                send_email(
-                    to=addr.strip(),
-                    subject=f"FYI: Alteration Approved — 433 W 34th St Apt {application['apartment']}",
-                    body=approval_email(application),
-                    from_alias=ALTERATIONS_EMAIL,
-                )
+        if orsid_coord:
+            send_email(
+                to=orsid_coord,
+                subject=f"FYI: Alteration Approved — 433 W 34th St Apt {application['apartment']}",
+                body=approval_email(application),
+                from_alias=ALTERATIONS_EMAIL,
+            )
         log_event(app_id, "Status: Board Approved",
                   f"Board approved. Approval notification sent to {application['shareholder_email']}"
                   + (f" and {application.get('gc_email')}" if application.get('gc_email') else "") + ". Eddie and Orsid notified.",
@@ -599,11 +600,11 @@ def admin_withdraw(app_id):
             return redirect(url_for("admin_dashboard"))
 
         reason = request.form.get("reason", "").strip()
-        update_application_field(app_id, "status", "Withdrawn")
+        fields = {"status": "Withdrawn"}
         if reason:
             existing_notes = app_data.get("notes", "") or ""
-            updated_notes = (existing_notes + "\n\n" if existing_notes else "") + f"Withdrawal reason: {reason}"
-            update_application_field(app_id, "notes", updated_notes)
+            fields["notes"] = (existing_notes + "\n\n" if existing_notes else "") + f"Withdrawal reason: {reason}"
+        update_application_fields(app_id, fields)
         log_event(app_id, "Status: Withdrawn",
                   reason or "Marked withdrawn/canceled by board.",
                   actor="board", apartment=app_data.get("apartment", ""))

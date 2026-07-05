@@ -10,9 +10,14 @@ from services.google_auth import get_credentials
 
 ALTERATIONS_EMAIL = os.environ.get("ALTERATIONS_EMAIL", "apps@433w34.com")
 
+# Cached service client — rebuilt on process restart (deploy), not per-request
+_gmail_client = None
 
 def _svc():
-    return build("gmail", "v1", credentials=get_credentials(), cache_discovery=False)
+    global _gmail_client
+    if _gmail_client is None:
+        _gmail_client = build("gmail", "v1", credentials=get_credentials(), cache_discovery=False)
+    return _gmail_client
 
 
 # ── Sending ───────────────────────────────────────────────────────────────────

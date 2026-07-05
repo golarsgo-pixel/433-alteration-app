@@ -25,10 +25,14 @@ COLUMNS = [
     "drive_folder_url", "notes",
 ]
 
+# Cached service client — rebuilt on process restart (deploy), not per-request
+_sheets_client = None
 
 def _service():
-    creds = get_credentials()
-    return build("sheets", "v4", credentials=creds, cache_discovery=False)
+    global _sheets_client
+    if _sheets_client is None:
+        _sheets_client = build("sheets", "v4", credentials=get_credentials(), cache_discovery=False)
+    return _sheets_client
 
 
 def _col_letter(index: int) -> str:
@@ -89,7 +93,12 @@ def get_application(app_id: str) -> Optional[dict]:
 
 
 def update_application_field(app_id: str, field: str, value: str):
-    """Find the row for app_id and update a single field."""
+    """Update a single field. Prefer update_application_fields() when changing multiple fields."""
+    update_application_fields(app_id, {field: value})
+
+
+def update_application_fields(app_id: str, updates: dict):
+    """Update multiple fields for one application in a single Sheets batchUpdate."""
     svc = _service()
     result = svc.spreadsheets().values().get(
         spreadsheetId=SHEET_ID, range="Sheet1"
@@ -98,20 +107,24 @@ def update_application_field(app_id: str, field: str, value: str):
     if not rows:
         return
     header = rows[0]
-    if "app_id" not in header or field not in header:
+    if "app_id" not in header:
         return
     id_col = header.index("app_id")
-    field_col = header.index(field)
     for i, row in enumerate(rows[1:], start=2):
-        row_id = row[id_col] if id_col < len(row) else ""
-        if row_id == app_id:
-            cell = f"Sheet1!{_col_letter(field_col)}{i}"
-            svc.spreadsheets().values().update(
-                spreadsheetId=SHEET_ID,
-                range=cell,
-                valueInputOption="RAW",
-                body={"values": [[str(value)]]},
-            ).execute()
+        if (id_col < len(row) and row[id_col] == app_id):
+            batch_data = []
+            for field, value in updates.items():
+                if field in header:
+                    col = header.index(field)
+                    batch_data.append({
+                        "range": f"Sheet1!{_col_letter(col)}{i}",
+                        "values": [[str(value)]],
+                    })
+            if batch_data:
+                svc.spreadsheets().values().batchUpdate(
+                    spreadsheetId=SHEET_ID,
+                    body={"valueInputOption": "RAW", "data": batch_data},
+                ).execute()
             return
 
 
@@ -119,12 +132,16 @@ def update_application_field(app_id: str, field: str, value: str):
 
 LOG_COLUMNS = ["timestamp", "app_id", "apartment", "event", "detail", "actor"]
 
+# Cached after first confirmed existence — reset on process restart
+_log_tab_ready = False
+
 def _ensure_log_tab():
-    """Create the Log tab and header row if they don't exist."""
+    global _log_tab_ready
+    if _log_tab_ready:
+        return
     svc = _service()
     meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
     sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
-
     if "Log" not in sheet_names:
         svc.spreadsheets().batchUpdate(
             spreadsheetId=SHEET_ID,
@@ -136,15 +153,10 @@ def _ensure_log_tab():
             valueInputOption="RAW",
             body={"values": [LOG_COLUMNS]},
         ).execute()
+    _log_tab_ready = True
 
 
 def log_event(app_id: str, event: str, detail: str = "", actor: str = "system", apartment: str = ""):
-    """
-    Append one row to the Log tab.
-    event:  short label  e.g. "Status: Architect Assigned", "Email: Receipt sent"
-    detail: free text    e.g. "Assigned to Melone", "Forwarded to apt8d@email.com"
-    actor:  who did it   e.g. "system", "board", "architect"
-    """
     try:
         _ensure_log_tab()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -157,7 +169,6 @@ def log_event(app_id: str, event: str, detail: str = "", actor: str = "system", 
             body={"values": [row]},
         ).execute()
     except Exception as e:
-        # Log failures should never break the main flow
         import logging
         logging.getLogger(__name__).error(f"log_event failed: {e}")
 
@@ -199,8 +210,13 @@ _SETTINGS_DEFAULTS = {
     "engineer_2_email":          "",
 }
 
+# Cached after first confirmed existence — reset on process restart
+_settings_tab_ready = False
 
 def _ensure_settings_tab():
+    global _settings_tab_ready
+    if _settings_tab_ready:
+        return
     svc = _service()
     meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
     sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
@@ -209,7 +225,6 @@ def _ensure_settings_tab():
             spreadsheetId=SHEET_ID,
             body={"requests": [{"addSheet": {"properties": {"title": "Settings"}}}]},
         ).execute()
-        # Seed with defaults, pulling from env vars for smooth migration
         seed = dict(_SETTINGS_DEFAULTS)
         seed["engineer_1_emails"]        = os.environ.get("MELONE_EMAILS", "")
         seed["engineer_2_email"]         = os.environ.get("CAPOBIANCO_EMAIL", "")
@@ -224,6 +239,7 @@ def _ensure_settings_tab():
             valueInputOption="RAW",
             body={"values": header + rows},
         ).execute()
+    _settings_tab_ready = True
 
 
 def get_settings() -> dict:
@@ -234,7 +250,6 @@ def get_settings() -> dict:
             spreadsheetId=SHEET_ID, range="Settings"
         ).execute()
         rows = result.get("values", [])
-        # Start with hardcoded defaults, then layer env vars, then sheet values
         settings = dict(_SETTINGS_DEFAULTS)
         settings["engineer_1_emails"]       = os.environ.get("MELONE_EMAILS", settings["engineer_1_emails"])
         settings["engineer_2_email"]        = os.environ.get("CAPOBIANCO_EMAIL", settings["engineer_2_email"])
@@ -276,14 +291,12 @@ def save_settings(updates: dict):
         else:
             new_rows.append([key, str(value), now])
 
-    # One API call for all existing-key updates
     if batch_data:
         svc.spreadsheets().values().batchUpdate(
             spreadsheetId=SHEET_ID,
             body={"valueInputOption": "RAW", "data": batch_data},
         ).execute()
 
-    # Append only truly new keys (first-time use of a new setting)
     for row in new_rows:
         svc.spreadsheets().values().append(
             spreadsheetId=SHEET_ID,
