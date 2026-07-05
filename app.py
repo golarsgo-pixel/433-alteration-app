@@ -8,7 +8,6 @@ from flask import (
 )
 from dotenv import load_dotenv
 from services.google_auth import require_board_login, get_auth_url, handle_callback
-from services.drive_service import create_application_folder, upload_file
 from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, log_event, get_settings, save_settings
 from services.gmail_service import send_email
 from services.claude_service import review_application
@@ -70,12 +69,81 @@ def index():
     return render_template("index.html")
 
 
+def _post_submit_background(app_id, data, uploaded_files):
+    """
+    Runs in a daemon thread after the application is saved and the user
+    has already been redirected. Drive uploads, Claude review, and all
+    emails happen here so the submission request completes in ~1 second.
+    If the process restarts mid-thread, the application row is already in
+    Sheets and recoverable from the admin dashboard.
+    """
+    from services.drive_service import create_application_folder, upload_bytes
+
+    # Step 1: Drive — create folder and upload all attached files
+    folder_url = ""
+    try:
+        folder_id, folder_url = create_application_folder(app_id, data["apartment"])
+        for f in uploaded_files:
+            upload_bytes(folder_id, f["filename"], f["data"], f["content_type"])
+        update_application_field(app_id, "drive_folder_url", folder_url)
+        data["drive_folder_url"] = folder_url
+    except Exception as e:
+        app.logger.error(f"[{app_id}] Drive upload failed: {e}")
+
+    # Step 2: Claude AI review
+    try:
+        review = review_application(data)
+        ai_summary = review.get("summary", "")
+        riser = "yes" if review.get("riser_risk") else "no"
+        update_application_fields(app_id, {
+            "ai_review_summary": ai_summary,
+            "riser_flag": riser,
+        })
+        data["ai_review_summary"] = ai_summary
+        data["riser_flag"] = riser
+    except Exception as e:
+        app.logger.error(f"[{app_id}] Claude review failed: {e}")
+        data.setdefault("ai_review_summary", "Automated review unavailable — please review manually.")
+
+    # Step 3: Emails — sent after Claude so board alert includes the review summary
+    try:
+        send_email(
+            to=data["shareholder_email"],
+            cc=data["gc_email"] if data["gc_email"] else None,
+            subject=f"Application Received — Apt {data['apartment']} | {app_id}",
+            body=receipt_email(data),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        _s = get_settings()
+        orsid_cc = _s.get("orsid_coordinator_email", "")
+        send_email(
+            to=ADMIN_EMAIL,
+            cc=orsid_cc if orsid_cc else None,
+            subject=f"[ACTION REQUIRED] New Alteration Application — Apt {data['apartment']} | {app_id}",
+            body=board_alert_email(data),
+            from_alias=ALTERATIONS_EMAIL,
+        )
+        eddie_email = _s.get("superintendent_email", "")
+        if eddie_email:
+            send_email(
+                to=eddie_email,
+                subject=f"FYI: New Alteration Application — Apt {data['apartment']}",
+                body=eddie_new_submission_email(data),
+                from_alias=ALTERATIONS_EMAIL,
+            )
+        log_event(app_id, "Email: Receipt sent",
+                  f"Receipt sent to {data['shareholder_email']}"
+                  + (f", CC {data['gc_email']}" if data.get('gc_email') else "") + ". Board alerted.",
+                  apartment=data["apartment"])
+    except Exception as e:
+        app.logger.error(f"[{app_id}] Email send failed: {e}")
+
+
 @app.route("/apply", methods=["GET", "POST"])
 def apply():
     if request.method == "GET":
         return render_template("intake.html")
 
-    # Build application record from form
     app_id = "ALT-" + datetime.now().strftime("%Y%m") + "-" + uuid.uuid4().hex[:5].upper()
     submitted_at = datetime.now().isoformat()
 
@@ -87,7 +155,7 @@ def apply():
         "shareholder_name": request.form.get("shareholder_name", "").strip(),
         "shareholder_email": request.form.get("shareholder_email", "").strip(),
         "shareholder_phone": request.form.get("shareholder_phone", "").strip(),
-        "project_type": request.form.get("project_type", ""),  # decoration | alteration
+        "project_type": request.form.get("project_type", ""),
         "scope_description": request.form.get("scope_description", "").strip(),
         "estimated_cost": request.form.get("estimated_cost", "").strip(),
         "start_date": request.form.get("start_date", "").strip(),
@@ -117,73 +185,36 @@ def apply():
         "notes": "",
     }
 
-    # Upload documents to Google Drive
-    folder_url = ""
-    try:
-        folder_id, folder_url = create_application_folder(app_id, data["apartment"])
-        data["drive_folder_url"] = folder_url
-        for field_name, file in request.files.items():
-            if file and file.filename:
-                upload_file(folder_id, file)
-    except Exception as e:
-        app.logger.error(f"Drive upload failed: {e}")
+    # Read file bytes now — streams close when the request ends and can't be
+    # passed to a background thread
+    uploaded_files = []
+    for _field, file in request.files.items():
+        if file and file.filename:
+            uploaded_files.append({
+                "filename": file.filename,
+                "data": file.read(),
+                "content_type": file.content_type or "application/octet-stream",
+            })
 
-    # Run Claude AI review
-    try:
-        review = review_application(data)
-        data["ai_review_summary"] = review.get("summary", "")
-        data["riser_flag"] = "yes" if review.get("riser_risk") else "no"
-    except Exception as e:
-        app.logger.error(f"Claude review failed: {e}")
-        data["ai_review_summary"] = "Automated review unavailable — please review manually."
-
-    # Save to Google Sheets
+    # Save to Sheets immediately — application is safe before user redirect
     try:
         append_application(data)
         log_event(app_id, "Status: Received",
                   f"Application submitted by {data['shareholder_name']} for Apt {data['apartment']}. "
                   f"Project: {data.get('project_type','').title()}. "
                   f"{'Expedited review requested. ' if data.get('expediting') == 'yes' else ''}"
-                  f"Riser flag: {data.get('riser_flag','no')}.",
+                  f"Drive upload, AI review, and notifications processing in background.",
                   actor="shareholder", apartment=data["apartment"])
     except Exception as e:
-        app.logger.error(f"Sheets write failed: {e}")
+        app.logger.error(f"[{app_id}] Sheets write failed: {e}")
 
-    # Send emails
-    try:
-        # Receipt to shareholder
-        send_email(
-            to=data["shareholder_email"],
-            cc=data["gc_email"] if data["gc_email"] else None,
-            subject=f"Application Received — Apt {data['apartment']} | {app_id}",
-            body=receipt_email(data),
-            from_alias=ALTERATIONS_EMAIL,
-        )
-        # Alert to board + Orsid building management
-        _s = get_settings()
-        orsid_cc = _s.get("orsid_coordinator_email", "")
-        send_email(
-            to=ADMIN_EMAIL,
-            cc=orsid_cc if orsid_cc else None,
-            subject=f"[ACTION REQUIRED] New Alteration Application — Apt {data['apartment']} | {app_id}",
-            body=board_alert_email(data),
-            from_alias=ALTERATIONS_EMAIL,
-        )
-        # FYI to Eddie
-        eddie_email = _s.get("superintendent_email", "")
-        if eddie_email:
-            send_email(
-                to=eddie_email,
-                subject=f"FYI: New Alteration Application — Apt {data['apartment']}",
-                body=eddie_new_submission_email(data),
-                from_alias=ALTERATIONS_EMAIL,
-            )
-        log_event(app_id, "Email: Receipt sent",
-                  f"Receipt sent to {data['shareholder_email']}"
-                  + (f", CC {data['gc_email']}" if data.get('gc_email') else "") + ". Board alerted.",
-                  apartment=data["apartment"])
-    except Exception as e:
-        app.logger.error(f"Email send failed: {e}")
+    # Everything else runs in the background — user sees confirmation immediately
+    import threading
+    threading.Thread(
+        target=_post_submit_background,
+        args=(app_id, data, uploaded_files),
+        daemon=True,
+    ).start()
 
     return redirect(url_for("submitted", app_id=app_id))
 

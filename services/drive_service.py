@@ -7,10 +7,14 @@ import google.oauth2.service_account
 
 ROOT_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "")
 
+# Cached service client — rebuilt on process restart (deploy), not per-request
+_drive_client = None
 
 def _service():
-    creds = get_credentials()
-    return build("drive", "v3", credentials=creds, cache_discovery=False)
+    global _drive_client
+    if _drive_client is None:
+        _drive_client = build("drive", "v3", credentials=get_credentials(), cache_discovery=False)
+    return _drive_client
 
 
 def create_application_folder(app_id: str, apartment: str) -> tuple[str, str]:
