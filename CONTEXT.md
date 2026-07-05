@@ -19,8 +19,10 @@ This app automates the intake, routing, review, and tracking workflow entirely.
 5. Board gets an action-required email; Eddie (super) gets an FYI
 6. Board logs into `/admin`, reviews, and assigns a reviewing architect
 7. Architect gets a packaged email with all documents and the Drive folder link
-8. Board approves → shareholder and GC get approval email with next steps
-9. Shareholder tracks status at `/status` using their Application ID
+8. Architect sends clearance email → triggers board vote: each member gets a magic link
+9. Board votes (4 of 7 majority); operator (Jeremy) gets auto-alert when threshold is met
+10. Jeremy clicks Approve in admin → shareholder and GC get official approval email with next steps
+11. Shareholder tracks status at `/status` using their Application ID
 
 ---
 
@@ -171,6 +173,95 @@ On startup, `google_auth.py` writes it to `token.json` automatically if the file
 If Google ever revokes the token (rare), visit `https://four33-alteration-app.onrender.com/auth/login`,
 log in with `apps@433w34.com`, then update the `GOOGLE_TOKEN_JSON` env var on Render
 with the new contents of your local `token.json`.
+
+---
+
+## Board Voting — Design (not yet built)
+
+### Why the current "Approve" button is not the vote
+
+The Approve button in the admin panel is the **operator action** — Jeremy as Board President
+sending the official approval notification to the shareholder on behalf of the board. It is not
+Jeremy personally approving. The actual board vote happens upstream of this button.
+
+Currently (pre-build) the board reviews and discusses informally by email and WhatsApp, and Jeremy
+clicks Approve once the board is aligned. This is the workflow the app was originally built around
+and is the gap to close.
+
+### The correct workflow once built
+
+1. **Engineer sends clearance email** → `inbox_service` detects it → status moves to
+   `Awaiting Board Vote` (this status already exists in the codebase)
+2. **Enhanced AI board summary is generated** at this moment — not just the submission summary,
+   but a structured brief incorporating the original application AND the engineer's clearance email.
+   Must specifically confirm: scope, required plumbing/electrical/structural items addressed,
+   any exceptions the board needs to decide on. This is what board members read instead of
+   digging through documents.
+3. **Vote tokens generated** — one unique token per board member (from `board_members_json`
+   in Settings). One row written to a new "Votes" sheet tab per board member per application.
+4. **Vote emails sent** — each board member gets a personal email with their magic link.
+5. **Board member visits `/vote/{app_id}/{token}`** — no login required. Page shows:
+   - The AI-generated board summary
+   - Link to the Google Drive folder (documents)
+   - Current vote tally: names and approve/pending status visible to all (social accountability)
+   - One action: **Approve** button
+   - Passive note (not a button): *"Have concerns? Please raise them in the Board WhatsApp group."*
+   - If they've already voted, page shows their recorded vote instead of the button
+6. **If threshold not met** — board members who haven't voted show as pending in the admin panel.
+   Jeremy can see the count and follow up individually. No in-app flag or blocking state.
+7. **When 4 approve votes are recorded** → automatic email alert to Jeremy/operator that the
+   threshold is met and he can send the official notification.
+8. **Jeremy clicks Approve** in the admin panel → official approval notification goes to
+   shareholder, GC, Eddie, and Orsid.
+
+### Key design decisions
+
+- **No "Flag" button or blocking state.** Concerns go to WhatsApp, not into the app. Board
+  members either vote Approve or they don't vote yet. Jeremy sees pending votes in the admin panel.
+- **Votes are visible to each other.** Board members see names + approve/pending on their vote page.
+  This mirrors how a real vote works and creates natural accountability without forcing discussion
+  into the app.
+- **Threshold is approve-count only.** 4 approvals triggers the alert regardless of how many
+  haven't voted. If concerns exist, they're surfaced on WhatsApp before votes come in.
+- **Operator action is separate from the vote.** Jeremy clicking Approve is a designated
+  notification action, not a vote. He doesn't vote in the app; he executes the outcome.
+- **Exceptions are handled outside the app.** Minor exceptions (special situations on a door,
+  window replacement, etc.) are decided on WhatsApp and become conditions of approval in the
+  official approval email. They don't need a separate tracked state in the app.
+
+### Settings additions required
+
+`board_members_json` — dynamic list in the Settings panel, same pattern as `engineers_json`:
+```json
+[{"name": "Jeremy Kuhn", "email": "board@433w34.com"}, ...]
+```
+7 members, re-elected annually. Must be configurable without a redeploy.
+
+### New Sheets tab: "Votes"
+
+Columns: `app_id`, `board_member_name`, `board_member_email`, `token`, `vote`, `voted_at`
+
+`vote` is either `approved` or empty (pending). No flag state.
+
+### Admin panel additions required
+
+On the application detail page:
+- Vote progress: "3 of 7 approved" with names listed
+- Approve button only becomes relevant once threshold is met (but is not blocked — Jeremy can
+  still send notification at his discretion)
+
+### AI summary enhancement required
+
+The Claude review at submission time is a basic intake check. The **board summary** generated at
+`Awaiting Board Vote` is a separate, more thorough brief intended for board members to read
+instead of the raw documents. It must:
+- Summarize the project scope in plain language
+- Confirm (or flag) that each required document category is present and addressed
+- Specifically call out plumbing, electrical, structural items if applicable
+- Reproduce key parts of the engineer's clearance / any conditions they noted
+- Surface any exceptions being requested that require a board decision
+
+This is the difference between "here are the docs" and "here is what you're being asked to vote on."
 
 ---
 
