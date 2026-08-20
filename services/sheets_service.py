@@ -276,6 +276,29 @@ def record_vote(token: str) -> tuple:
     return None, 0
 
 
+def get_pending_vote_rows(app_id: str) -> list:
+    """Return pending (unvoted) rows for an application, INCLUDING tokens, for reminder emails."""
+    try:
+        _ensure_votes_tab()
+        result = _service().spreadsheets().values().get(
+            spreadsheetId=SHEET_ID, range="Votes"
+        ).execute()
+        rows = result.get("values", [])
+        if len(rows) < 2:
+            return []
+        header = rows[0]
+        entries = [
+            dict(zip(header, r + [""] * (len(header) - len(r))))
+            for r in rows[1:]
+        ]
+        return [
+            e for e in entries
+            if e.get("app_id") == app_id and e.get("vote") != "approved"
+        ]
+    except Exception:
+        return []
+
+
 def get_votes_for_app(app_id: str) -> list:
     """Return all vote rows for an application as list of dicts (token excluded)."""
     try:

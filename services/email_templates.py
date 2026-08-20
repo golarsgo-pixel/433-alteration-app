@@ -993,6 +993,39 @@ and the application is now ready for a board vote.</p>
 """)
 
 
+def vote_reminder_email(app: dict, member_name: str, vote_url: str) -> str:
+    """Daily reminder to board members who haven't voted yet."""
+    apt = app.get("apartment", "")
+    app_id = app.get("app_id", "")
+    return _wrap(f"""
+<p>Dear {member_name},</p>
+
+<p>This is a reminder that your vote is still pending on the following alteration application.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{app_id}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{apt}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{app.get('shareholder_name', '')}</td></tr>
+</table>
+
+<p style="margin:24px 0;">
+  <a href="{vote_url}"
+     style="display:inline-block; background:#27ae60; color:white; padding:14px 28px;
+            border-radius:5px; text-decoration:none; font-weight:bold; font-size:15px;">
+    Review &amp; Vote →
+  </a>
+</p>
+
+<p style="font-size:13px; color:#888;">
+  You will receive a daily reminder until your vote is recorded.
+  If you have concerns, raise them in the board WhatsApp group.
+</p>
+""")
+
+
 def vote_threshold_email(app: dict, approve_count: int) -> str:
     """Sent to the operator (Jeremy) when the 4/7 approval threshold is reached."""
     apt = app.get("apartment", "")

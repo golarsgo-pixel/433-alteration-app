@@ -9,14 +9,14 @@ from flask import (
 )
 from dotenv import load_dotenv
 from services.google_auth import require_board_login, get_auth_url, handle_callback
-from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, get_application_log, log_event, get_settings, save_settings, write_vote_tokens, record_vote, get_votes_for_app
+from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, get_application_log, log_event, get_settings, save_settings, write_vote_tokens, record_vote, get_votes_for_app, get_pending_vote_rows
 from services.gmail_service import send_email
 from services.claude_service import review_application
 from services.email_templates import (
     receipt_email, board_alert_email, eddie_new_submission_email,
     architect_notification_email, architect_package_email,
     approval_email, eddie_approval_email, neighbor_letter_email,
-    vote_invitation_email, vote_threshold_email, changes_required_email,
+    vote_invitation_email, vote_reminder_email, vote_threshold_email, changes_required_email,
 )
 
 load_dotenv()
@@ -708,18 +708,59 @@ def admin_check_inbox():
     return redirect(url_for("admin_dashboard"))
 
 
+def _send_vote_reminders() -> dict:
+    """
+    For every application awaiting a board vote, email pending voters their magic link.
+    Called once daily by the cron job — the daily cadence is the throttle.
+    Returns a summary dict for logging.
+    """
+    apps = get_all_applications()
+    reminded = 0
+    skipped = 0
+    for a in apps:
+        if a.get("status") != "Awaiting Board Vote":
+            continue
+        app_id = a.get("app_id", "")
+        pending = get_pending_vote_rows(app_id)
+        if not pending:
+            skipped += 1
+            continue
+        for voter in pending:
+            vote_url = f"{APP_URL}/vote/{app_id}/{voter['token']}"
+            try:
+                send_email(
+                    to=voter["board_member_email"],
+                    subject=f"Reminder: Vote Pending — {app_id} Apt {a.get('apartment')}",
+                    body=vote_reminder_email(a, voter["board_member_name"], vote_url),
+                    reply_to=BOARD_EMAIL,
+                )
+                reminded += 1
+            except Exception:
+                pass
+        log_event(app_id, "Vote Reminder Sent",
+                  f"Reminded {len(pending)} pending voter(s)",
+                  actor="system", apartment=a.get("apartment", ""))
+    return {"apps_reminded": reminded, "apps_complete": skipped}
+
+
 @app.route("/cron/check-inbox", methods=["POST"])
 def cron_check_inbox():
-    """Called by Render Cron Job every 15 minutes. Protected by CRON_SECRET token."""
+    """Called by cron job once daily. Protected by CRON_SECRET token."""
     auth = request.headers.get("Authorization", "")
     if not CRON_SECRET or auth != f"Bearer {CRON_SECRET}":
         return jsonify({"error": "Unauthorized"}), 401
+    results = {}
     try:
         from services.inbox_service import process_inbox
         processed, errors = process_inbox()
-        return jsonify({"processed": processed, "errors": errors}), 200
+        results["inbox"] = {"processed": processed, "errors": errors}
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        results["inbox"] = {"error": str(e)}
+    try:
+        results["vote_reminders"] = _send_vote_reminders()
+    except Exception as e:
+        results["vote_reminders"] = {"error": str(e)}
+    return jsonify(results), 200
 
 
 @app.route("/admin/token")
