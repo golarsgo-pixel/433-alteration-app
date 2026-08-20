@@ -345,7 +345,7 @@
       </div>
 
       <!-- Board Vote Panel -->
-      {% if app.status == 'Awaiting Board Vote' %}
+      {% if app.status in ['Architect Assigned', 'Architect Review', 'Awaiting Board Vote'] or votes %}
       <div class="card" style="border:2px solid #1a5276;">
         <h2 style="color:#1a3a5c;">Board Vote</h2>
 
@@ -380,6 +380,7 @@
           </button>
         </form>
 
+        {% if votes or app.status == 'Awaiting Board Vote' %}
         <hr style="border:none; border-top:1px solid #eee; margin:0 0 14px;">
 
         {% if approve_count >= 4 %}
@@ -408,6 +409,7 @@
             ✗ Changes Required
           </button>
         </form>
+        {% endif %}
       </div>
       {% endif %}
 
