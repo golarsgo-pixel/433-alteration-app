@@ -456,7 +456,6 @@ def admin_update(app_id):
         flash("Invalid field.", "error")
         return redirect(url_for("admin_application", app_id=app_id))
     try:
-        application = get_application(app_id)
         update_application_field(app_id, field, value)
         # Log meaningful field changes
         label_map = {
@@ -471,7 +470,7 @@ def admin_update(app_id):
         if field != "notes" and field in label_map:
             log_event(app_id, f"Updated: {label_map[field]}",
                       f"Set to: {value}",
-                      actor="board", apartment=application.get("apartment", "") if application else "")
+                      actor="board")
         flash("Updated.", "success")
     except Exception as e:
         flash(f"Error: {e}", "error")
