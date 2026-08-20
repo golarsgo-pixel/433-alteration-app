@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Board Vote — {{ app.app_id }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:700px;">
+
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:22px; color:#1a3a5c; margin-bottom:4px;">
+      Board Vote — Apt {{ app.apartment }}
+    </h2>
+    <div style="font-size:13px; color:#888;">
+      {{ app.app_id }} &nbsp;·&nbsp; {{ app.shareholder_name }}
+      &nbsp;·&nbsp; {{ 'Decoration Project' if app.project_type == 'decoration' else 'Full Alteration' }}
+    </div>
+  </div>
+
+  {% if already_voted %}
+  <div style="background:#eafaf1; border:2px solid #27ae60; border-radius:8px;
+              padding:20px 24px; margin-bottom:24px; text-align:center;">
+    <div style="font-size:22px; margin-bottom:6px;">✅</div>
+    <strong style="color:#1e8449; font-size:16px;">Your vote has been recorded — Approved</strong><br>
+    <span style="font-size:13px; color:#555; margin-top:6px; display:block;">
+      Thank you, {{ voter_name }}.
+    </span>
+  </div>
+  {% else %}
+  <div style="background:#fff8e8; border:2px solid #e67e22; border-radius:8px;
+              padding:20px 24px; margin-bottom:24px;">
+    <p style="margin:0 0 16px; font-size:15px; color:#444;">
+      You are voting as <strong>{{ voter_name }}</strong>. Review the details below, then cast your vote.
+    </p>
+    <form method="POST"
+          onsubmit="return confirm('Confirm: record your approval for {{ app.app_id }}?')">
+      <button type="submit" class="btn btn-success" style="font-size:16px; padding:14px 32px;">
+        ✓ Approve this application
+      </button>
+    </form>
+    <p style="font-size:12px; color:#888; margin:12px 0 0;">
+      Have concerns? Raise them in the board WhatsApp group before voting.
+    </p>
+  </div>
+  {% endif %}
+
+  <!-- Vote tally -->
+  <div class="card">
+    <h2>Vote Tally — {{ approve_count }} of 7 Approved</h2>
+    {% if votes %}
+    <table style="width:100%; border-collapse:collapse; font-size:14px; margin-top:8px;">
+      {% for v in votes %}
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px 0; color:#333;">{{ v.board_member_name }}</td>
+        <td style="padding:8px 0; text-align:right;">
+          {% if v.vote == 'approved' %}
+          <span style="color:#27ae60; font-weight:600;">✓ Approved</span>
+          <span style="font-size:11px; color:#aaa; margin-left:8px;">{{ v.voted_at }}</span>
+          {% else %}
+          <span style="color:#aaa;">Pending</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p style="color:#aaa; font-size:13px;">No votes recorded yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Application details -->
+  <div class="card">
+    <h2>Application Details</h2>
+    <dl class="detail-grid">
+      <dt>Apartment</dt><dd>{{ app.apartment }}</dd>
+      <dt>Shareholder</dt><dd>{{ app.shareholder_name }}</dd>
+      <dt>Project Type</dt>
+      <dd>{{ 'Decoration Project' if app.project_type == 'decoration' else 'Full Alteration' }}</dd>
+      <dt>Estimated Cost</dt><dd>${{ app.estimated_cost | comma }}</dd>
+      <dt>Proposed Dates</dt>
+      <dd>{{ app.start_date or '—' }} → {{ app.end_date or '—' }}</dd>
+      <dt>GC</dt>
+      <dd>{{ app.gc_name }} — {{ app.gc_company }}</dd>
+    </dl>
+    <h3 style="margin-top:20px;">Scope of Work</h3>
+    <p style="background:#f9f9f9; padding:12px; border-left:3px solid #ccc;
+              white-space:pre-wrap; font-size:14px;">{{ app.scope_description }}</p>
+  </div>
+
+  {% if app.ai_review_summary %}
+  <div class="card" style="border-left:4px solid #1a5276;">
+    <h2>AI Preliminary Review</h2>
+    <p>{{ app.ai_review_summary }}</p>
+  </div>
+  {% endif %}
+
+  {% if app.drive_folder_url %}
+  <div class="card">
+    <h2>Documents</h2>
+    <a href="{{ app.drive_folder_url }}" target="_blank" class="btn btn-secondary">
+      📁 View Full Application Package
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -146,6 +146,14 @@
               {% if milestones.get('Status: Board Approved') %}
                 <span style="color:#aaa; font-size:12px; margin-left:8px;">{{ milestones['Status: Board Approved'] }}</span>
               {% endif %}
+            {% elif app.status == 'Awaiting Board Vote' %}
+              <span style="color:#e67e22;">⏳ Board vote in progress</span>
+            {% elif app.status == 'Changes Required' %}
+              <span style="color:#c0392b; font-weight:600;">Changes required — please check your email</span>
+              <span style="display:block; font-size:12px; color:#888; margin-top:4px;">
+                The board has requested revisions before this application can be approved.
+                Details were sent to your email. Please resubmit once revisions are complete.
+              </span>
             {% else %}
               <span style="color:#aaa;">— Pending Designated Engineer recommendation</span>
             {% endif %}

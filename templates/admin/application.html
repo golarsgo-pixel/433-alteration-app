@@ -199,7 +199,7 @@
             <input type="hidden" name="field" value="status">
             <select name="value" style="flex:1;">
               {% for s in ['Received','Pending Assignment','Architect Assigned','Architect Review',
-                            'Awaiting Board Vote','Board Approved','Work In Progress',
+                            'Awaiting Board Vote','Changes Required','Board Approved','Work In Progress',
                             'Project Sign-Off','Complete','On Hold','Rejected'] %}
               <option {{ 'selected' if app.status == s }}>{{ s }}</option>
               {% endfor %}
@@ -319,12 +319,79 @@
         {% endif %}
       </div>
 
+      <!-- Board Vote Panel -->
+      {% if app.status == 'Awaiting Board Vote' or votes %}
+      <div class="card" style="border:2px solid #1a5276;">
+        <h2 style="color:#1a3a5c;">Board Vote</h2>
+
+        <!-- Tally -->
+        <div style="margin-bottom:16px;">
+          <div style="font-size:18px; font-weight:700; color:#1a3a5c; margin-bottom:8px;">
+            {{ approve_count }} of 7 Approved
+          </div>
+          {% if votes %}
+          <table style="width:100%; font-size:13px; border-collapse:collapse;">
+            {% for v in votes %}
+            <tr style="border-bottom:1px solid #eee;">
+              <td style="padding:5px 0; color:#444;">{{ v.board_member_name }}</td>
+              <td style="padding:5px 0; text-align:right;">
+                {% if v.vote == 'approved' %}
+                <span style="color:#27ae60; font-weight:600;">✓ Approved</span>
+                {% else %}
+                <span style="color:#aaa;">Pending</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </table>
+          {% endif %}
+        </div>
+
+        <!-- Send / Resend vote links -->
+        <form method="POST" action="/admin/application/{{ app.app_id }}/send-vote-links"
+              onsubmit="return confirm('{% if votes %}Resend vote links to all board members? This will generate new tokens and send new emails.{% else %}Send vote links to all board members?{% endif %}')">
+          <button type="submit" class="btn btn-secondary btn-sm" style="width:100%; margin-bottom:12px;">
+            {{ '↺ Resend Vote Links' if votes else '✉ Send Vote Links to Board' }}
+          </button>
+        </form>
+
+        <hr style="border:none; border-top:1px solid #eee; margin:0 0 14px;">
+
+        {% if approve_count >= 4 %}
+        <p style="font-size:13px; color:#1e8449; font-weight:600; margin-bottom:12px;">
+          ✓ Threshold met ({{ approve_count }}/7) — ready to approve.
+        </p>
+        {% endif %}
+
+        <!-- Approve -->
+        <form method="POST" action="/admin/application/{{ app.app_id }}/approve"
+              onsubmit="return confirm('Approve this application and notify all parties?')"
+              style="margin-bottom:10px;">
+          <button type="submit" class="btn btn-success" style="width:100%;">
+            ✓ Approve &amp; Notify All Parties
+          </button>
+        </form>
+
+        <!-- Changes Required -->
+        <form method="POST" action="/admin/application/{{ app.app_id }}/changes-required"
+              onsubmit="return confirm('Mark as Changes Required and notify the shareholder?')">
+          <textarea name="reason" rows="2" placeholder="Describe what needs to change…"
+                    style="width:100%; padding:8px 10px; border:1px solid #d0d7e0; border-radius:5px;
+                           font-size:13px; font-family:inherit; margin-bottom:8px; resize:vertical;"></textarea>
+          <button type="submit" class="btn btn-sm"
+                  style="width:100%; background:#c0392b; color:white; border:none; cursor:pointer; padding:10px;">
+            ✗ Changes Required
+          </button>
+        </form>
+      </div>
+      {% endif %}
+
       <!-- Workflow Actions -->
-      {% if app.status not in ['Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete', 'Rejected'] %}
+      {% if app.status not in ['Awaiting Board Vote', 'Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete', 'Rejected', 'Changes Required'] %}
       <div class="card" style="border:2px solid #27ae60;">
         <h2 style="color:#1e8449;">Board Approval</h2>
         <p style="font-size:13px; color:#555; margin-bottom:16px;">
-          Only approve once the architect has recommended approval. This will notify the shareholder,
+          Only approve once the engineer has recommended approval. This will notify the shareholder,
           GC, Eddie, and Orsid building management.
         </p>
         <form method="POST" action="/admin/application/{{ app.app_id }}/approve"
@@ -333,6 +400,18 @@
             ✓ Approve &amp; Notify All Parties
           </button>
         </form>
+      </div>
+      {% elif app.status == 'Changes Required' %}
+      <div class="card" style="border:2px solid #c0392b;">
+        <div style="text-align:center; padding:8px 0 12px;">
+          <div style="font-size:22px; margin-bottom:4px;">✗</div>
+          <strong style="color:#c0392b;">Changes Required</strong>
+        </div>
+        <hr style="border:none; border-top:1px solid #eee; margin:0 0 14px;">
+        <p style="font-size:13px; color:#555; margin-bottom:12px;">
+          Shareholder has been notified. Once they resubmit with revisions, use the Board Vote
+          panel above to send updated vote links.
+        </p>
       </div>
 
       {% elif app.status == 'Board Approved' %}

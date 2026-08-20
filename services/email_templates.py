@@ -942,3 +942,108 @@ def _fmt_cost(val) -> str:
         return f"{int(float(str(val).replace(',', '').replace('$', ''))):,}"
     except (ValueError, TypeError):
         return str(val) if val else "not provided"
+
+
+# ── Board voting emails ────────────────────────────────────────────────────────
+
+def vote_invitation_email(app: dict, member_name: str, vote_url: str) -> str:
+    """Sent to each board member when vote links are generated."""
+    apt = app.get("apartment", "")
+    app_id = app.get("app_id", "")
+    project_type = "Decoration Project" if app.get("project_type") == "decoration" else "Full Alteration"
+    scope = app.get("scope_description", "No description provided.")
+    return _wrap(f"""
+<p>Dear {member_name},</p>
+
+<p>The Designated Engineer has completed their review of the alteration application below
+and the application is now ready for a board vote.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{app_id}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{apt}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{app.get('shareholder_name', '')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Project Type</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{project_type}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Estimated Cost</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">${_fmt_cost(app.get('estimated_cost'))}</td></tr>
+</table>
+
+<p><strong>Scope of work:</strong></p>
+<p style="background:#f9f9f9; padding:12px; border-left:3px solid #ccc; white-space:pre-wrap; font-size:14px;">{scope}</p>
+
+{"<p><strong>AI Preliminary Review:</strong></p><p style='background:#f0f4f8; padding:12px; border-left:3px solid #1a5276; font-size:14px;'>" + app.get('ai_review_summary','') + "</p>" if app.get('ai_review_summary') else ""}
+
+{"<p><a href='" + app.get('drive_folder_url','') + "' style='color:#1a5276;'>View full application documents →</a></p>" if app.get('drive_folder_url') else ""}
+
+<p style="margin:24px 0;">
+  <a href="{vote_url}"
+     style="display:inline-block; background:#27ae60; color:white; padding:14px 28px;
+            border-radius:5px; text-decoration:none; font-weight:bold; font-size:15px;">
+    Review &amp; Vote →
+  </a>
+</p>
+
+<p style="font-size:13px; color:#888;">
+  This link is personal to you and records your vote. If you have concerns or questions,
+  please raise them in the board WhatsApp group before voting.
+</p>
+""")
+
+
+def vote_threshold_email(app: dict, approve_count: int) -> str:
+    """Sent to the operator (Jeremy) when the 4/7 approval threshold is reached."""
+    apt = app.get("apartment", "")
+    app_id = app.get("app_id", "")
+    return _wrap(f"""
+<p>The board vote threshold has been reached for the following application.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{app_id}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{apt}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{app.get('shareholder_name', '')}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Votes Approved</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;"><strong>{approve_count} of 7</strong></td></tr>
+</table>
+
+<p>Log in to the admin panel to review the full vote tally and send the official approval notification.</p>
+
+{_sig()}
+""")
+
+
+def changes_required_email(app: dict, reason: str) -> str:
+    """Sent to shareholder (CC GC) when the board requires changes before approval."""
+    apt = app.get("apartment", "")
+    app_id = app.get("app_id", "")
+    reason_block = f"""
+<p><strong>What needs to change:</strong></p>
+<p style="background:#fdf0f0; padding:12px; border-left:3px solid #c0392b; white-space:pre-wrap; font-size:14px;">{reason}</p>
+""" if reason else ""
+    return _wrap(f"""
+<p>Dear {app.get('shareholder_name', 'Shareholder')},</p>
+
+<p>Thank you for submitting your alteration application for Apartment <strong>{apt}</strong>.
+After review, the board requires the following changes before the application can be approved.</p>
+
+{reason_block}
+
+<p>Please revise your application accordingly and resubmit. A revised submission will be
+reviewed promptly — in most cases it will not need to go through the full review process again.</p>
+
+<table style="border-collapse:collapse; width:100%; margin:16px 0;">
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold; width:40%;">Application ID</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{app_id}</td></tr>
+  <tr><td style="padding:6px 12px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:6px 12px; border:1px solid #e5e7e9;">{apt}</td></tr>
+</table>
+
+<p>If you have questions, reply to this email with your Application ID in the subject line.</p>
+
+{_sig()}
+""")

@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import secrets
 from datetime import datetime
 from flask import (
     Flask, render_template, request, redirect,
@@ -8,13 +9,14 @@ from flask import (
 )
 from dotenv import load_dotenv
 from services.google_auth import require_board_login, get_auth_url, handle_callback
-from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, log_event, get_settings, save_settings
+from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, get_application_log, log_event, get_settings, save_settings, write_vote_tokens, record_vote, get_votes_for_app
 from services.gmail_service import send_email
 from services.claude_service import review_application
 from services.email_templates import (
     receipt_email, board_alert_email, eddie_new_submission_email,
     architect_notification_email, architect_package_email,
-    approval_email, eddie_approval_email, neighbor_letter_email
+    approval_email, eddie_approval_email, neighbor_letter_email,
+    vote_invitation_email, vote_threshold_email, changes_required_email,
 )
 
 load_dotenv()
@@ -25,8 +27,10 @@ app.secret_key = os.environ["SECRET_KEY"]
 BOARD_EMAIL = os.environ["BOARD_EMAIL"]
 ADMIN_EMAIL = os.environ["ADMIN_EMAIL"]
 ALTERATIONS_EMAIL = os.environ["ALTERATIONS_EMAIL"]
+APP_URL = os.environ.get("APP_URL", "https://four33-alteration-app.onrender.com")
 
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
+VOTE_THRESHOLD = 4
 
 def _parse_engineers(settings: dict) -> list:
     import json as _json
@@ -359,11 +363,13 @@ def admin_application(app_id):
     if not application:
         flash("Application not found.", "error")
         return redirect(url_for("admin_dashboard"))
-    from services.sheets_service import get_application_log
     activity_log = get_application_log(app_id)
     settings = get_settings()
     engineers = [{"key": e["key"], "label": e.get("label", e["key"])} for e in _parse_engineers(settings)]
-    return render_template("admin/application.html", app=application, activity_log=activity_log, engineers=engineers)
+    votes = get_votes_for_app(app_id)
+    approve_count = sum(1 for v in votes if v.get("vote") == "approved")
+    return render_template("admin/application.html", app=application, activity_log=activity_log,
+                           engineers=engineers, votes=votes, approve_count=approve_count)
 
 
 @app.route("/admin/application/<app_id>/assign", methods=["POST"])
@@ -807,6 +813,130 @@ def admin_settings_save():
     except Exception as e:
         flash(f"Could not save settings: {e}", "error")
     return redirect(url_for("admin_settings"))
+
+
+# ── Board voting routes ───────────────────────────────────────────────────────
+
+def _send_vote_links(app_id: str, app_data: dict):
+    """Generate tokens for all board members, write to Votes tab, send invite emails."""
+    settings = get_settings()
+    members = _parse_board_members(settings)
+    if not members:
+        raise ValueError("No board members configured in Settings.")
+    members_with_tokens = [
+        {"name": m["name"], "email": m["email"], "token": secrets.token_urlsafe(32)}
+        for m in members
+    ]
+    write_vote_tokens(app_id, members_with_tokens)
+    for m in members_with_tokens:
+        vote_url = f"{APP_URL}/vote/{app_id}/{m['token']}"
+        send_email(
+            to=m["email"],
+            subject=f"Board Vote — {app_id} Apt {app_data.get('apartment')}",
+            body=vote_invitation_email(app_data, m["name"], vote_url),
+            reply_to=BOARD_EMAIL,
+        )
+
+
+@app.route("/admin/application/<app_id>/send-vote-links", methods=["POST"])
+@require_board_login
+def admin_send_vote_links(app_id):
+    application = get_application(app_id)
+    if not application:
+        flash("Application not found.", "error")
+        return redirect(url_for("admin_dashboard"))
+    try:
+        _send_vote_links(app_id, application)
+        update_application_fields(app_id, {"status": "Awaiting Board Vote"})
+        log_event(app_id, "Board Vote Links Sent", "Magic links emailed to all board members",
+                  actor="board", apartment=application.get("apartment", ""))
+        flash("Vote links sent to all board members.", "success")
+    except Exception as e:
+        flash(f"Could not send vote links: {e}", "error")
+    return redirect(url_for("admin_application", app_id=app_id))
+
+
+@app.route("/vote/<app_id>/<token>", methods=["GET"])
+def vote_page(app_id, token):
+    votes = get_votes_for_app(app_id)
+    # Verify token belongs to this app — we need to check the Votes tab directly
+    # get_votes_for_app strips tokens, so we check via a separate lookup
+    from services.sheets_service import _service, SHEET_ID, _ensure_votes_tab
+    _ensure_votes_tab()
+    raw = _service().spreadsheets().values().get(spreadsheetId=SHEET_ID, range="Votes").execute()
+    raw_rows = raw.get("values", [])
+    header = raw_rows[0] if raw_rows else []
+    valid = False
+    already_voted = False
+    voter_name = ""
+    try:
+        token_col  = header.index("token")
+        app_id_col = header.index("app_id")
+        vote_col   = header.index("vote")
+        name_col   = header.index("board_member_name")
+        for row in raw_rows[1:]:
+            padded = row + [""] * (len(header) - len(row))
+            if padded[token_col] == token and padded[app_id_col] == app_id:
+                valid = True
+                already_voted = padded[vote_col] == "approved"
+                voter_name = padded[name_col]
+                break
+    except (ValueError, IndexError):
+        pass
+    if not valid:
+        return render_template("vote_invalid.html"), 404
+    application = get_application(app_id)
+    if not application:
+        return render_template("vote_invalid.html"), 404
+    approve_count = sum(1 for v in votes if v.get("vote") == "approved")
+    return render_template("vote.html", app=application, votes=votes,
+                           approve_count=approve_count, already_voted=already_voted,
+                           voter_name=voter_name, token=token)
+
+
+@app.route("/vote/<app_id>/<token>", methods=["POST"])
+def vote_submit(app_id, token):
+    found_app_id, approve_count = record_vote(token)
+    if found_app_id is None:
+        return render_template("vote_invalid.html"), 404
+    if approve_count == -1:
+        return redirect(url_for("vote_page", app_id=app_id, token=token))
+    # Check threshold — send alert if just hit
+    if approve_count == VOTE_THRESHOLD:
+        try:
+            application = get_application(found_app_id)
+            if application:
+                send_email(
+                    to=ADMIN_EMAIL,
+                    subject=f"Board Vote Threshold Reached — {found_app_id} Apt {application.get('apartment')}",
+                    body=vote_threshold_email(application, approve_count),
+                )
+        except Exception:
+            pass  # don't let alert failure block the vote
+    return redirect(url_for("vote_page", app_id=app_id, token=token))
+
+
+@app.route("/admin/application/<app_id>/changes-required", methods=["POST"])
+@require_board_login
+def admin_changes_required(app_id):
+    application = get_application(app_id)
+    if not application:
+        flash("Application not found.", "error")
+        return redirect(url_for("admin_dashboard"))
+    reason = request.form.get("reason", "").strip()
+    update_application_field(app_id, "status", "Changes Required")
+    gc_email = application.get("gc_email", "")
+    send_email(
+        to=application.get("shareholder_email", ""),
+        cc=gc_email if gc_email else None,
+        subject=f"Changes Required — {application.get('app_id')} Apt {application.get('apartment')}",
+        body=changes_required_email(application, reason),
+        reply_to=BOARD_EMAIL,
+    )
+    log_event(app_id, "Changes Required", reason or "No reason provided",
+              actor="board", apartment=application.get("apartment", ""))
+    flash("Status set to Changes Required and shareholder notified.", "success")
+    return redirect(url_for("admin_application", app_id=app_id))
 
 
 if __name__ == "__main__":

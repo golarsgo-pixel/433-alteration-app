@@ -190,6 +190,115 @@ def get_application_log(app_id: str) -> list:
         return []
 
 
+# ── Votes (board vote tracking) ───────────────────────────────────────────────
+
+VOTES_COLUMNS = ["app_id", "board_member_name", "board_member_email", "token", "vote", "voted_at"]
+
+_votes_tab_ready = False
+
+def _ensure_votes_tab():
+    global _votes_tab_ready
+    if _votes_tab_ready:
+        return
+    svc = _service()
+    meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
+    sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
+    if "Votes" not in sheet_names:
+        svc.spreadsheets().batchUpdate(
+            spreadsheetId=SHEET_ID,
+            body={"requests": [{"addSheet": {"properties": {"title": "Votes"}}}]},
+        ).execute()
+        svc.spreadsheets().values().update(
+            spreadsheetId=SHEET_ID,
+            range="Votes!A1",
+            valueInputOption="RAW",
+            body={"values": [VOTES_COLUMNS]},
+        ).execute()
+    _votes_tab_ready = True
+
+
+def write_vote_tokens(app_id: str, members_with_tokens: list):
+    """Append one row per board member to the Votes tab. members_with_tokens: [{name, email, token}]"""
+    _ensure_votes_tab()
+    rows = [[app_id, m["name"], m["email"], m["token"], "", ""] for m in members_with_tokens]
+    _service().spreadsheets().values().append(
+        spreadsheetId=SHEET_ID,
+        range="Votes!A1",
+        valueInputOption="RAW",
+        insertDataOption="INSERT_ROWS",
+        body={"values": rows},
+    ).execute()
+
+
+def record_vote(token: str) -> tuple:
+    """
+    Find the vote row by token and mark it approved.
+    Returns (app_id, approve_count) on success, (app_id, -1) if already voted,
+    or (None, 0) if token not found.
+    """
+    _ensure_votes_tab()
+    svc = _service()
+    result = svc.spreadsheets().values().get(spreadsheetId=SHEET_ID, range="Votes").execute()
+    rows = result.get("values", [])
+    if len(rows) < 2:
+        return None, 0
+    header = rows[0]
+    try:
+        token_col   = header.index("token")
+        vote_col    = header.index("vote")
+        voted_at_col = header.index("voted_at")
+        app_id_col  = header.index("app_id")
+    except ValueError:
+        return None, 0
+
+    for i, row in enumerate(rows[1:], start=2):
+        padded = row + [""] * (len(header) - len(row))
+        if padded[token_col] != token:
+            continue
+        app_id = padded[app_id_col]
+        if padded[vote_col] == "approved":
+            return app_id, -1  # already voted
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        svc.spreadsheets().values().batchUpdate(
+            spreadsheetId=SHEET_ID,
+            body={"valueInputOption": "RAW", "data": [
+                {"range": f"Votes!E{i}", "values": [["approved"]]},
+                {"range": f"Votes!F{i}", "values": [[now]]},
+            ]},
+        ).execute()
+        # Count approvals already recorded (before this vote) + 1 for the vote we just wrote
+        prev_approvals = sum(
+            1 for r in rows[1:]
+            if len(r) > app_id_col and r[app_id_col] == app_id
+            and len(r) > vote_col and r[vote_col] == "approved"
+        )
+        return app_id, prev_approvals + 1
+    return None, 0
+
+
+def get_votes_for_app(app_id: str) -> list:
+    """Return all vote rows for an application as list of dicts (token excluded)."""
+    try:
+        _ensure_votes_tab()
+        result = _service().spreadsheets().values().get(
+            spreadsheetId=SHEET_ID, range="Votes"
+        ).execute()
+        rows = result.get("values", [])
+        if len(rows) < 2:
+            return []
+        header = rows[0]
+        entries = [
+            dict(zip(header, r + [""] * (len(header) - len(r))))
+            for r in rows[1:]
+        ]
+        return [
+            {k: v for k, v in e.items() if k != "token"}
+            for e in entries if e.get("app_id") == app_id
+        ]
+    except Exception:
+        return []
+
+
 # ── Settings (separate "Settings" tab) ────────────────────────────────────────
 
 _SETTINGS_DEFAULTS = {
