@@ -1,9 +1,15 @@
 import os
 import json
-import anthropic
 from services.ai_usage_logger import log_usage
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+_anthropic_client = None
+
+def _client():
+    global _anthropic_client
+    if _anthropic_client is None:
+        import anthropic
+        _anthropic_client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+    return _anthropic_client
 
 ALTERATION_AGREEMENT_CONTEXT = """
 You are reviewing alteration applications for 433 West 34th Street Owners Corp., a NYC co-op.
@@ -160,7 +166,7 @@ Please review this application and return a JSON object with exactly these keys:
 Be specific and practical. If riser_risk is true, the riser_note should explain which part of the scope triggers this and what Eddie should check before demo begins. Only flag things that are actually relevant to this specific scope.
 """
 
-    response = client.messages.create(
+    response = _client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1500,
         messages=[{"role": "user", "content": prompt}],
@@ -219,7 +225,7 @@ CRITICAL RULES:
 - Return only the email body as HTML (no subject line, no <html>/<body> tags)
 """
 
-    response = client.messages.create(
+    response = _client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1200,
         messages=[{"role": "user", "content": prompt}],
@@ -266,7 +272,7 @@ Definitions:
 Be CONSERVATIVE — only set is_final=true if you are confident the architect has concluded
 their review. When in doubt, use is_final=false and recommendation="more_info"."""
 
-    response = client.messages.create(
+    response = _client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=100,
         messages=[{"role": "user", "content": prompt}],
@@ -360,7 +366,7 @@ Respond in JSON only:
 If is_scope_document is false, return additions=[], removals=[], has_material_additions=false,
 board_alert=false, and a summary explaining this appears to be a response letter, not a scope revision."""
 
-    response = client.messages.create(
+    response = _client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=800,
         messages=[{"role": "user", "content": prompt}],
@@ -416,7 +422,7 @@ Write in a professional but warm tone. Sign as "433 West 34th Street Board of Di
 Return just the email body as plain HTML (no subject line).
 """
 
-    response = client.messages.create(
+    response = _client().messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1200,
         messages=[{"role": "user", "content": prompt}],
