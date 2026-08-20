@@ -748,6 +748,17 @@ def admin_show_token():
     """
 
 
+def _parse_board_members(settings: dict) -> list:
+    import json as _json
+    raw = settings.get("board_members_json", "")
+    if raw:
+        try:
+            return _json.loads(raw)
+        except (ValueError, TypeError):
+            pass
+    return []
+
+
 def _parse_fee_billing(settings: dict) -> list:
     import json as _json
     raw = settings.get("orsid_fee_billing_json", "")
@@ -770,8 +781,10 @@ def admin_settings():
     settings = get_settings()
     engineers_list = _parse_engineers(settings)
     fee_billing_list = _parse_fee_billing(settings)
+    board_members_list = _parse_board_members(settings)
     return render_template("admin/settings.html", settings=settings,
-                           engineers_list=engineers_list, fee_billing_list=fee_billing_list)
+                           engineers_list=engineers_list, fee_billing_list=fee_billing_list,
+                           board_members_list=board_members_list)
 
 
 @app.route("/admin/settings", methods=["POST"])
@@ -779,6 +792,7 @@ def admin_settings():
 def admin_settings_save():
     updates = {
         "engineers_json":             request.form.get("engineers_json", "").strip(),
+        "board_members_json":         request.form.get("board_members_json", "").strip(),
         "admin_email":                request.form.get("admin_email", "").strip(),
         "superintendent_name":        request.form.get("superintendent_name", "").strip(),
         "superintendent_email":       request.form.get("superintendent_email", "").strip(),

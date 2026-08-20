@@ -428,6 +428,23 @@ it gets double-escaped and renders literally as `&amp;` in the browser.
 
 Outside of `{{ }}` expressions (plain HTML), write `&amp;` as normal.
 
+### Font handling — system stack only, no external font loaded
+
+The app uses a system font stack defined once in `templates/base.html`:
+
+```css
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+```
+
+**Key rules when updating or adding any template:**
+
+- **Never add a Google Fonts `@import`** — Render's CSP and page load budget don't need it; system fonts render instantly and look native on Mac/iOS/Windows.
+- **All form elements must use `font-family: inherit`** — browsers reset inputs/selects/textareas to their own font by default. Every `<input>`, `<select>`, and `<textarea>` needs `font-family: inherit` in its style, or it will render in a different font than the rest of the page.
+- **New pages must extend `base.html`** — any template that doesn't `{% extends "base.html" %}` loses the font declaration entirely and will fall back to Times New Roman.
+- **Don't set `font-family` anywhere else** — the single declaration in `base.html` is the source of truth. Inline overrides on specific elements create inconsistency.
+
+If a design update touches multiple templates, check each one for bare `<input>` or `<select>` elements that may be missing `font-family: inherit`.
+
 ### Currency formatting — always use the `comma` filter
 Any dollar amount that could exceed $999 must use the `| comma` Jinja2 filter to render with
 a thousands separator. The filter is registered in `app.py` and handles strings, ints, and floats.

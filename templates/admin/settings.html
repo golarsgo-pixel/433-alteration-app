@@ -20,6 +20,7 @@
 
   <form method="POST" action="/admin/settings" id="settings-form">
     <input type="hidden" name="engineers_json" id="engineers-json-input">
+    <input type="hidden" name="board_members_json" id="board-members-json-input">
     <input type="hidden" name="orsid_fee_billing_json" id="fee-billing-json-input">
     <input type="hidden" name="orsid_fee_billing_emails" id="fee-billing-emails-input">
 
@@ -105,6 +106,24 @@
       </button>
     </div>
 
+    <!-- Board Members -->
+    <div class="card">
+      <h2>Board Members</h2>
+      <p style="font-size:13px; color:#666; margin-bottom:20px;">
+        The 7 board members who receive vote links when an application reaches the board vote stage.
+        Update this list whenever the board changes after an annual election.
+        Changes take effect immediately — no redeploy needed.
+      </p>
+
+      <div id="board-members-list"></div>
+
+      <button type="button" id="add-board-member-btn"
+              style="margin-top:4px; background:none; border:1px dashed #aaa; border-radius:5px;
+                     padding:8px 16px; font-size:13px; color:#666; cursor:pointer; width:100%;">
+        + Add Member
+      </button>
+    </div>
+
     <!-- Board Operator Inbox -->
     <div class="card">
       <h2>Board Operator Inbox</h2>
@@ -132,6 +151,7 @@
 <script>
 let engineers    = {{ engineers_list | tojson }};
 let feeBilling   = {{ fee_billing_list | tojson }};
+let boardMembers = {{ board_members_list | tojson }};
 
 const FEE_ROLES  = ['Admin Assistant', 'Bookkeeper', 'Other'];
 
@@ -279,6 +299,58 @@ document.getElementById('add-fee-contact-btn').addEventListener('click', functio
   if (rows.length) rows[rows.length - 1].querySelector('.fee-name').focus();
 });
 
+// ── Board Members ──────────────────────────────────────────────────────────────
+
+function renderBoardMembers() {
+  const list = document.getElementById('board-members-list');
+  if (boardMembers.length === 0) {
+    list.innerHTML = '<p style="font-size:13px; color:#aaa; margin-bottom:12px;">No board members configured yet. Add them below.</p>';
+    return;
+  }
+  list.innerHTML = boardMembers.map((m, idx) => `
+    <div class="board-member-row" style="${rowStyle()}">
+      <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:12px; align-items:end;">
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; margin-bottom:5px; color:#444;">Name</label>
+          <input type="text" class="bm-name"
+                 value="${escAttr(m.name)}"
+                 placeholder="e.g. Sarah Chen"
+                 style="width:100%; padding:9px 12px; border:1px solid #d0d7e0; border-radius:5px; font-size:14px; font-family:inherit;">
+        </div>
+        <div>
+          <label style="display:block; font-weight:600; font-size:13px; margin-bottom:5px; color:#444;">Email</label>
+          <input type="text" class="bm-email"
+                 value="${escAttr(m.email)}"
+                 placeholder="member@email.com"
+                 style="width:100%; padding:9px 12px; border:1px solid #d0d7e0; border-radius:5px; font-size:14px; font-family:inherit;">
+        </div>
+        <div style="padding-bottom:2px;">
+          <button type="button" class="remove-bm-btn"
+                  style="background:none; border:none; color:#c0392b; font-size:13px; cursor:pointer; padding:9px 8px;"
+                  data-idx="${idx}">
+            Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('#board-members-list .remove-bm-btn').forEach(btn => {
+    btn.style.display = boardMembers.length > 1 ? '' : 'none';
+    btn.addEventListener('click', function() {
+      boardMembers.splice(parseInt(this.dataset.idx), 1);
+      renderBoardMembers();
+    });
+  });
+}
+
+document.getElementById('add-board-member-btn').addEventListener('click', function() {
+  boardMembers.push({name: '', email: ''});
+  renderBoardMembers();
+  const rows = document.querySelectorAll('#board-members-list .board-member-row');
+  if (rows.length) rows[rows.length - 1].querySelector('.bm-name').focus();
+});
+
 // ── Submit ─────────────────────────────────────────────────────────────────────
 
 document.getElementById('settings-form').addEventListener('submit', function() {
@@ -293,6 +365,15 @@ document.getElementById('settings-form').addEventListener('submit', function() {
   });
   document.getElementById('engineers-json-input').value = JSON.stringify(engResult);
 
+  // Serialize board members
+  const bmResult = [];
+  document.querySelectorAll('#board-members-list .board-member-row').forEach(row => {
+    const name  = row.querySelector('.bm-name').value.trim();
+    const email = row.querySelector('.bm-email').value.trim();
+    if (name || email) bmResult.push({name, email});
+  });
+  document.getElementById('board-members-json-input').value = JSON.stringify(bmResult);
+
   // Serialize fee billing
   const feeResult = [];
   document.querySelectorAll('#fee-billing-list .fee-row').forEach(row => {
@@ -306,6 +387,7 @@ document.getElementById('settings-form').addEventListener('submit', function() {
 });
 
 renderEngineers();
+renderBoardMembers();
 renderFeeBilling();
 </script>
 {% endblock %}

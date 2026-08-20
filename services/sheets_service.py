@@ -194,6 +194,7 @@ def get_application_log(app_id: str) -> list:
 
 _SETTINGS_DEFAULTS = {
     "engineers_json":            "",
+    "board_members_json":        "",
     "admin_email":               "board@433w34.com",
     "superintendent_name":       "",
     "superintendent_email":      "",
