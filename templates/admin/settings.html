@@ -211,6 +211,7 @@ function renderEngineers() {
   document.querySelectorAll('#engineers-list .remove-btn').forEach(btn => {
     btn.style.display = engineers.length > 1 ? '' : 'none';
     btn.addEventListener('click', function() {
+      syncEngineers();
       engineers.splice(parseInt(this.dataset.idx), 1);
       renderEngineers();
     });
@@ -227,7 +228,18 @@ function renderEngineers() {
   });
 }
 
+function syncEngineers() {
+  document.querySelectorAll('#engineers-list .engineer-row').forEach((row, idx) => {
+    if (engineers[idx]) {
+      engineers[idx].label  = row.querySelector('.eng-label').value;
+      engineers[idx].emails = row.querySelector('.eng-emails').value;
+      engineers[idx].key    = row.querySelector('.eng-key').value;
+    }
+  });
+}
+
 document.getElementById('add-engineer-btn').addEventListener('click', function() {
+  syncEngineers();
   engineers.push({key: '', label: '', emails: ''});
   renderEngineers();
   const rows = document.querySelectorAll('#engineers-list .engineer-row');
@@ -286,13 +298,25 @@ function renderFeeBilling() {
   document.querySelectorAll('#fee-billing-list .remove-fee-btn').forEach(btn => {
     btn.style.display = feeBilling.length > 1 ? '' : 'none';
     btn.addEventListener('click', function() {
+      syncFeeBilling();
       feeBilling.splice(parseInt(this.dataset.idx), 1);
       renderFeeBilling();
     });
   });
 }
 
+function syncFeeBilling() {
+  document.querySelectorAll('#fee-billing-list .fee-row').forEach((row, idx) => {
+    if (feeBilling[idx]) {
+      feeBilling[idx].name  = row.querySelector('.fee-name').value;
+      feeBilling[idx].role  = row.querySelector('.fee-role').value;
+      feeBilling[idx].email = row.querySelector('.fee-email').value;
+    }
+  });
+}
+
 document.getElementById('add-fee-contact-btn').addEventListener('click', function() {
+  syncFeeBilling();
   feeBilling.push({name: '', role: 'Bookkeeper', email: ''});
   renderFeeBilling();
   const rows = document.querySelectorAll('#fee-billing-list .fee-row');
@@ -338,13 +362,24 @@ function renderBoardMembers() {
   document.querySelectorAll('#board-members-list .remove-bm-btn').forEach(btn => {
     btn.style.display = boardMembers.length > 1 ? '' : 'none';
     btn.addEventListener('click', function() {
+      syncBoardMembers();
       boardMembers.splice(parseInt(this.dataset.idx), 1);
       renderBoardMembers();
     });
   });
 }
 
+function syncBoardMembers() {
+  document.querySelectorAll('#board-members-list .board-member-row').forEach((row, idx) => {
+    if (boardMembers[idx]) {
+      boardMembers[idx].name  = row.querySelector('.bm-name').value;
+      boardMembers[idx].email = row.querySelector('.bm-email').value;
+    }
+  });
+}
+
 document.getElementById('add-board-member-btn').addEventListener('click', function() {
+  syncBoardMembers();
   boardMembers.push({name: '', email: ''});
   renderBoardMembers();
   const rows = document.querySelectorAll('#board-members-list .board-member-row');
