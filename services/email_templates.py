@@ -1050,6 +1050,79 @@ def vote_threshold_email(app: dict, approve_count: int) -> str:
 """)
 
 
+def auto_reply_email(reply_body: str) -> str:
+    """Wrap a Claude-drafted plain-text reply in the standard HTML template."""
+    paragraphs = reply_body.strip().split("\n\n")
+    html_parts = []
+    for p in paragraphs:
+        p = p.strip()
+        if p:
+            html_parts.append(f"<p>{p.replace(chr(10), '<br>')}</p>")
+    return _wrap("\n".join(html_parts))
+
+
+def fyi_forward_email(
+    original_subject: str,
+    original_from: str,
+    original_body: str,
+    app: dict = None,
+    auto_replied: bool = False,
+    reply_body: str = "",
+) -> str:
+    """FYI email sent to the board inbox whenever an inbound email is auto-handled."""
+    action_color = "#1e8449" if auto_replied else "#7f8c8d"
+    action_label = "✓ Auto-reply sent" if auto_replied else "— No reply sent (classified as spam/irrelevant)"
+
+    app_block = ""
+    if app:
+        app_block = f"""
+<p style="margin-top:20px;"><strong>Application context:</strong></p>
+<table style="border-collapse:collapse; width:100%; font-size:13px;">
+  <tr><td style="padding:5px 10px; background:#f4f6f7; font-weight:bold; width:35%;">App ID</td>
+      <td style="padding:5px 10px; border:1px solid #e5e7e9;">{app.get('app_id','')}</td></tr>
+  <tr><td style="padding:5px 10px; background:#f4f6f7; font-weight:bold;">Apartment</td>
+      <td style="padding:5px 10px; border:1px solid #e5e7e9;">{app.get('apartment','')}</td></tr>
+  <tr><td style="padding:5px 10px; background:#f4f6f7; font-weight:bold;">Shareholder</td>
+      <td style="padding:5px 10px; border:1px solid #e5e7e9;">{app.get('shareholder_name','')}</td></tr>
+  <tr><td style="padding:5px 10px; background:#f4f6f7; font-weight:bold;">Status</td>
+      <td style="padding:5px 10px; border:1px solid #e5e7e9;">{app.get('status','')}</td></tr>
+</table>
+"""
+
+    reply_block = ""
+    if auto_replied and reply_body:
+        reply_paragraphs = reply_body.strip().split("\n\n")
+        reply_html = "".join(f"<p style='margin:6px 0;'>{p.strip().replace(chr(10), '<br>')}</p>" for p in reply_paragraphs if p.strip())
+        reply_block = f"""
+<p style="margin-top:20px;"><strong>Claude's reply (sent to sender):</strong></p>
+<div style="background:#f0f7f0; border-left:3px solid #1e8449; padding:12px 16px; font-size:13px; white-space:pre-wrap;">
+{reply_html}
+</div>
+"""
+
+    original_html = original_body.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+
+    return _wrap(f"""
+<p style="background:#f4f6f7; padding:10px 14px; border-left:4px solid {action_color}; font-weight:600; color:{action_color};">
+  {action_label}
+</p>
+
+<p><strong>From:</strong> {original_from}<br>
+<strong>Subject:</strong> {original_subject}</p>
+
+{app_block}
+
+<p style="margin-top:20px;"><strong>Original message:</strong></p>
+<div style="background:#fafafa; border:1px solid #e5e7e9; padding:12px 16px; font-size:13px; color:#333;">
+{original_html[:3000]}{'…' if len(original_html) > 3000 else ''}
+</div>
+
+{reply_block}
+
+<p style="margin-top:20px; font-size:12px; color:#888;">This FYI was generated automatically. No action required unless something looks wrong.</p>
+""")
+
+
 def changes_required_email(app: dict, reason: str) -> str:
     """Sent to shareholder (CC GC) when the board requires changes before approval."""
     apt = app.get("apartment", "")

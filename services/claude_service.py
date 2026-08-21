@@ -390,6 +390,92 @@ board_alert=false, and a summary explaining this appears to be a response letter
         }
 
 
+_STATUS_DESCRIPTIONS = {
+    "Received":            "Application received and under initial review.",
+    "Pending Assignment":  "Being assigned to the board's reviewing architect.",
+    "Architect Assigned":  "Assigned to the reviewing architect — technical review will begin shortly.",
+    "Architect Review":    "Architect technical review is currently in progress.",
+    "Awaiting Board Vote": "Architect review is complete. The board is now voting on approval.",
+    "Board Approved":      "The board has approved the application. The shareholder will receive formal approval documentation and next steps.",
+    "Changes Required":    "The board has requested changes to the application before it can be approved.",
+    "Work In Progress":    "Application approved and work is underway.",
+    "Project Sign-Off":    "Work is complete and awaiting final sign-off.",
+    "Complete":            "Project is complete and the application is closed out.",
+    "Withdrawn":           "Application has been withdrawn.",
+    "On Hold":             "Application is currently on hold.",
+    "Rejected":            "Application has been rejected.",
+}
+
+
+def draft_auto_reply(email_subject: str, email_body: str, app: dict = None) -> dict:
+    """
+    Classify an inbound email to the alterations inbox and draft a reply if appropriate.
+    Returns {"send_reply": bool, "reply_body": str (plain text)}.
+    """
+    app_context = ""
+    if app:
+        status = app.get("status", "")
+        status_note = _STATUS_DESCRIPTIONS.get(status, status)
+        app_context = f"""
+REFERENCED APPLICATION:
+- App ID: {app.get('app_id')}
+- Apartment: {app.get('apartment')}
+- Shareholder: {app.get('shareholder_name')}
+- Current Status: {status} — {status_note}
+- Project: {app.get('scope_description', '')[:300]}
+
+Use this application context to give a specific, accurate reply about their application and what happens next.
+"""
+
+    prompt = f"""You manage inbound emails for the Alteration Review process at 433 West 34th Street Owners Corp., a NYC co-op.
+
+The alterations inbox (apps@433w34.com) has received an email that was not automatically handled by the routing system. Your job:
+
+1. Classify the email as LEGITIMATE (a genuine inquiry, question, or communication related to building alterations, the co-op, or an existing application) or NOT_LEGITIMATE (spam, promotional, clearly misdirected, automated delivery receipts, out-of-office replies, or completely irrelevant).
+
+2. If LEGITIMATE, draft a helpful and professional reply.
+
+KEY FACTS FOR REPLIES:
+- Building: 433 West 34th Street, New York, NY 10001
+- To start an alteration application: https://four33-alteration-app.onrender.com/apply
+- To check application status: https://four33-alteration-app.onrender.com/status
+- All alteration work requires board approval before it begins
+- Work hours: Monday–Friday, 9am–4:30pm only (no weekends, no holidays)
+- Application fee is billed separately through the building's managing agent
+- For follow-up questions, people can reply to this email and the board will follow up
+- Sign off as: The Alteration Review Team, 433 West 34th Street Owners Corp
+{app_context}
+INBOUND EMAIL:
+Subject: {email_subject}
+Body:
+{email_body[:2000]}
+
+Respond in JSON only — no other text:
+{{"send_reply": true or false, "reply_body": "..."}}
+
+reply_body must be plain text only (no HTML). Paragraphs separated by blank lines.
+Start with "Dear [first name if identifiable, otherwise 'Resident']," and end with a professional sign-off.
+If send_reply is false, set reply_body to "".
+"""
+
+    response = _client().messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=800,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    log_usage("draft_auto_reply", response.model, response.usage.input_tokens, response.usage.output_tokens)
+    text = response.content[0].text.strip()
+    if text.startswith("```"):
+        text = text.split("```")[1]
+        if text.startswith("json"):
+            text = text[4:]
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except Exception:
+        return {"send_reply": False, "reply_body": ""}
+
+
 def draft_architect_questions_response(
     architect_report_text: str,
     application_data: dict,

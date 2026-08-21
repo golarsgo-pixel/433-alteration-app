@@ -314,6 +314,78 @@ def _process_shareholder_to_architect(email: dict, app: dict):
     return f"Apt {app['apartment']} ({app_id}) — shareholder response forwarded to {architect_name}{scope_note}"
 
 
+# ── Auto-reply for unrouted emails ───────────────────────────────────────────
+
+def _auto_reply_and_forward(email: dict, app: dict = None) -> str:
+    """
+    For emails that didn't match the architect↔shareholder routing:
+    - Claude classifies and optionally drafts a reply
+    - Reply sent to sender if legitimate (not spam)
+    - FYI copy always forwarded to ADMIN_EMAIL
+    - Email marked as read either way
+    Returns a summary string for the processed log.
+    """
+    from services.gmail_service import send_email, mark_as_read
+    from services.claude_service import draft_auto_reply
+    from services.email_templates import auto_reply_email, fyi_forward_email
+
+    sender_email = _extract_sender_email(email["from"])
+    subject = email["subject"]
+    body_text = email["body_text"] or _strip_html(email["body_html"])
+
+    # Safety: never auto-reply to ourselves or other automated senders
+    skip_domains = {ALTERATIONS_EMAIL.split("@")[-1], "mailer-daemon", "postmaster"}
+    skip_addrs = {ALTERATIONS_EMAIL.lower(), ADMIN_EMAIL.lower() if ADMIN_EMAIL else ""}
+    if sender_email in skip_addrs or any(d in sender_email for d in skip_domains):
+        mark_as_read(email["id"])
+        return f"Email from {sender_email} — skipped (self/system address)"
+
+    # Ask Claude to classify and optionally draft a reply
+    send_reply = False
+    reply_body = ""
+    try:
+        result = draft_auto_reply(subject, body_text, app=app)
+        send_reply = result.get("send_reply", False)
+        reply_body = result.get("reply_body", "")
+    except Exception as e:
+        logger.error(f"Claude auto-reply draft failed for email from {sender_email}: {e}")
+
+    # Send reply to sender
+    if send_reply and reply_body:
+        try:
+            send_email(
+                to=sender_email,
+                subject=f"Re: {subject}",
+                body=auto_reply_email(reply_body),
+                reply_to=ALTERATIONS_EMAIL,
+            )
+        except Exception as e:
+            logger.error(f"Auto-reply send to {sender_email} failed: {e}")
+            send_reply = False  # reflect actual outcome in FYI
+
+    # Always forward FYI to board inbox
+    if ADMIN_EMAIL:
+        try:
+            fyi_label = "Auto-replied" if send_reply else "No reply — spam/irrelevant"
+            send_email(
+                to=ADMIN_EMAIL,
+                subject=f"[FYI: {fyi_label}] {subject}",
+                body=fyi_forward_email(
+                    subject, email["from"], body_text,
+                    app=app, auto_replied=send_reply, reply_body=reply_body if send_reply else "",
+                ),
+                reply_to=ALTERATIONS_EMAIL,
+            )
+        except Exception as e:
+            logger.error(f"FYI forward to admin failed: {e}")
+
+    mark_as_read(email["id"])
+
+    app_note = f" (App {app['app_id']} — {app.get('status')})" if app else ""
+    action = "auto-replied + FYI forwarded" if send_reply else "no reply (spam/irrelevant) + FYI forwarded"
+    return f"Email from {sender_email}{app_note} — {action}"
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def process_inbox():
@@ -344,8 +416,9 @@ def process_inbox():
             # Match on App ID — not on sender address
             app_id = _extract_app_id(subject) or _extract_app_id(email["body_text"])
             if not app_id:
-                logger.warning(f"No App ID in email from {sender_email} (subject: {subject[:80]}). Left unread.")
-                errors.append(f"Email from {sender_email} — no App ID found in subject. Left unread for manual review.")
+                logger.info(f"No App ID in email from {sender_email} (subject: {subject[:80]}). Auto-reply attempt.")
+                result = _auto_reply_and_forward(email, app=None)
+                processed.append(result)
                 continue
 
             from services.sheets_service import get_application
@@ -370,9 +443,10 @@ def process_inbox():
                     errors.append(f"App {app_id}: response received but no architect assigned — left unread.")
 
             else:
-                # App ID found but not in a state where we can route it
-                # (e.g. someone replies after approval) — leave unread for Jeremy
-                logger.info(f"Email for {app_id} in status '{app.get('status')}' — not auto-routed, left unread.")
+                # App ID found but not in a state we can route — auto-reply with context
+                logger.info(f"Email for {app_id} in status '{app.get('status')}' — not auto-routed, attempting auto-reply.")
+                result = _auto_reply_and_forward(email, app=app)
+                processed.append(result)
 
         except Exception as e:
             logger.error(f"Error processing message {msg_id}: {e}")
