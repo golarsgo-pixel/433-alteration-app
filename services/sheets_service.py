@@ -239,6 +239,32 @@ def get_pending_vote_rows(app_id: str) -> list:
         return []
 
 
+def lookup_vote_token(app_id: str, token: str) -> dict:
+    """Validate a vote token and return its state (includes token check).
+    Returns {"valid": bool, "already_voted": bool, "voter_name": str}."""
+    try:
+        _ensure_votes_tab()
+        rows = _spreadsheet().worksheet("Votes").get_all_values()
+        if len(rows) < 2:
+            return {"valid": False, "already_voted": False, "voter_name": ""}
+        header = rows[0]
+        token_col  = header.index("token")
+        app_id_col = header.index("app_id")
+        vote_col   = header.index("vote")
+        name_col   = header.index("board_member_name")
+        for row in rows[1:]:
+            padded = row + [""] * (len(header) - len(row))
+            if padded[token_col] == token and padded[app_id_col] == app_id:
+                return {
+                    "valid": True,
+                    "already_voted": padded[vote_col] == "approved",
+                    "voter_name": padded[name_col],
+                }
+        return {"valid": False, "already_voted": False, "voter_name": ""}
+    except Exception:
+        return {"valid": False, "already_voted": False, "voter_name": ""}
+
+
 def get_votes_for_app(app_id: str) -> list:
     """Return all vote rows for an application as list of dicts (token excluded)."""
     try:

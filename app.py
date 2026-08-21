@@ -9,7 +9,7 @@ from flask import (
 )
 from dotenv import load_dotenv
 from services.google_auth import require_board_login, get_auth_url, handle_callback
-from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, get_application_log, log_event, get_settings, save_settings, write_vote_tokens, record_vote, get_votes_for_app, get_pending_vote_rows
+from services.sheets_service import append_application, update_application_field, update_application_fields, get_all_applications, get_application, get_application_log, log_event, get_settings, save_settings, write_vote_tokens, record_vote, get_votes_for_app, get_pending_vote_rows, lookup_vote_token
 from services.gmail_service import send_email
 from services.claude_service import review_application
 from services.email_templates import (
@@ -899,30 +899,11 @@ def admin_send_vote_links(app_id):
 @app.route("/vote/<app_id>/<token>", methods=["GET"])
 def vote_page(app_id, token):
     votes = get_votes_for_app(app_id)
-    # Verify token belongs to this app — we need to check the Votes tab directly
-    # get_votes_for_app strips tokens, so we check via a separate lookup
-    from services.sheets_service import _service, SHEET_ID, _ensure_votes_tab
-    _ensure_votes_tab()
-    raw = _service().spreadsheets().values().get(spreadsheetId=SHEET_ID, range="Votes").execute()
-    raw_rows = raw.get("values", [])
-    header = raw_rows[0] if raw_rows else []
-    valid = False
-    already_voted = False
-    voter_name = ""
-    try:
-        token_col  = header.index("token")
-        app_id_col = header.index("app_id")
-        vote_col   = header.index("vote")
-        name_col   = header.index("board_member_name")
-        for row in raw_rows[1:]:
-            padded = row + [""] * (len(header) - len(row))
-            if padded[token_col] == token and padded[app_id_col] == app_id:
-                valid = True
-                already_voted = padded[vote_col] == "approved"
-                voter_name = padded[name_col]
-                break
-    except (ValueError, IndexError):
-        pass
+    # Verify token belongs to this app (get_votes_for_app strips tokens)
+    token_info = lookup_vote_token(app_id, token)
+    valid        = token_info["valid"]
+    already_voted = token_info["already_voted"]
+    voter_name   = token_info["voter_name"]
     if not valid:
         return render_template("vote_invalid.html"), 404
     application = get_application(app_id)
