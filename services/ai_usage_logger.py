@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from googleapiclient.discovery import build
+import gspread
 from services.google_auth import get_credentials
 
 COST_TRACKER_SHEET_ID = "1LqyIIsSaSrnWR2sQc_znE7p87d5TVgCFmAsUTgj-kAU"
@@ -17,26 +17,30 @@ _PRICING = {
 
 _log = logging.getLogger(__name__)
 
+# Cached gspread objects — rebuilt on process restart, not per-call
+_gspread_client = None
+_spreadsheet_obj = None
+_tab_ready = False
 
-def _service():
-    return build("sheets", "v4", credentials=get_credentials(), cache_discovery=False)
+
+def _spreadsheet():
+    global _gspread_client, _spreadsheet_obj
+    if _spreadsheet_obj is None:
+        _gspread_client = gspread.authorize(get_credentials())
+        _spreadsheet_obj = _gspread_client.open_by_key(COST_TRACKER_SHEET_ID)
+    return _spreadsheet_obj
 
 
 def _ensure_tab():
-    svc = _service()
-    meta = svc.spreadsheets().get(spreadsheetId=COST_TRACKER_SHEET_ID).execute()
-    names = [s["properties"]["title"] for s in meta.get("sheets", [])]
-    if TAB_NAME not in names:
-        svc.spreadsheets().batchUpdate(
-            spreadsheetId=COST_TRACKER_SHEET_ID,
-            body={"requests": [{"addSheet": {"properties": {"title": TAB_NAME}}}]},
-        ).execute()
-        svc.spreadsheets().values().update(
-            spreadsheetId=COST_TRACKER_SHEET_ID,
-            range=f"{TAB_NAME}!A1",
-            valueInputOption="RAW",
-            body={"values": [COLUMNS]},
-        ).execute()
+    global _tab_ready
+    if _tab_ready:
+        return
+    sh = _spreadsheet()
+    existing = [ws.title for ws in sh.worksheets()]
+    if TAB_NAME not in existing:
+        ws = sh.add_worksheet(title=TAB_NAME, rows=1000, cols=len(COLUMNS))
+        ws.update("A1", [COLUMNS])
+    _tab_ready = True
 
 
 def _estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
@@ -57,12 +61,6 @@ def log_usage(function_name: str, model: str, input_tokens: int, output_tokens: 
             output_tokens,
             round(cost, 6),
         ]
-        _service().spreadsheets().values().append(
-            spreadsheetId=COST_TRACKER_SHEET_ID,
-            range=f"{TAB_NAME}!A1",
-            valueInputOption="RAW",
-            insertDataOption="INSERT_ROWS",
-            body={"values": [row]},
-        ).execute()
+        _spreadsheet().worksheet(TAB_NAME).append_row(row, value_input_option="RAW")
     except Exception as e:
         _log.error(f"ai_usage_logger failed: {e}")

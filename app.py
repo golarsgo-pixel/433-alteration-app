@@ -450,7 +450,7 @@ def admin_update(app_id):
     value = request.form.get("value", "")
     allowed_fields = {
         "status", "permit_required", "permits", "payment_status",
-        "neighbor_letters_sent", "notes", "riser_flag", "expediting",
+        "neighbor_letters_sent", "notes", "riser_flag", "scope_change_flag", "expediting",
     }
     if field not in allowed_fields:
         flash("Invalid field.", "error")
@@ -465,6 +465,7 @@ def admin_update(app_id):
             "permit_required": "Permit Required",
             "permits": "Permit Details",
             "riser_flag": "Riser Flag",
+            "scope_change_flag": "Scope Change Flag",
             "expediting": "Expedited Review",
         }
         if field != "notes" and field in label_map:
