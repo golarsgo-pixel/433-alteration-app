@@ -417,21 +417,7 @@
       {% endif %}
 
       <!-- Workflow Actions -->
-      {% if app.status not in ['Awaiting Board Vote', 'Board Approved', 'Work In Progress', 'Project Sign-Off', 'Complete', 'Rejected', 'Changes Required'] %}
-      <div class="card" style="border:2px solid #27ae60;">
-        <h2 style="color:#1e8449;">Board Approval</h2>
-        <p style="font-size:13px; color:#555; margin-bottom:16px;">
-          Only approve once the engineer has recommended approval. This will notify the shareholder,
-          GC, Eddie, and Orsid building management.
-        </p>
-        <form method="POST" action="/admin/application/{{ app.app_id }}/approve"
-              onsubmit="return confirm('Approve this application and send notifications to all parties?')">
-          <button type="submit" class="btn btn-success" style="width:100%;">
-            ✓ Approve &amp; Notify All Parties
-          </button>
-        </form>
-      </div>
-      {% elif app.status == 'Changes Required' %}
+      {% if app.status == 'Changes Required' %}
       <div class="card" style="border:2px solid #c0392b;">
         <div style="text-align:center; padding:8px 0 12px;">
           <div style="font-size:22px; margin-bottom:4px;">✗</div>
