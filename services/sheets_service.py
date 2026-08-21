@@ -1,8 +1,7 @@
 import os
-import json
 from datetime import datetime
 from typing import Optional
-from googleapiclient.discovery import build
+import gspread
 from services.google_auth import get_credentials
 
 SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "")
@@ -25,14 +24,18 @@ COLUMNS = [
     "drive_folder_url", "notes",
 ]
 
-# Cached service client — rebuilt on process restart (deploy), not per-request
-_sheets_client = None
+# Cached gspread objects — rebuilt on process restart (deploy), not per-request
+_gspread_client = None
+_spreadsheet_obj = None
 
-def _service():
-    global _sheets_client
-    if _sheets_client is None:
-        _sheets_client = build("sheets", "v4", credentials=get_credentials(), cache_discovery=False)
-    return _sheets_client
+
+def _spreadsheet():
+    """Return (and lazily init) the cached gspread Spreadsheet object."""
+    global _gspread_client, _spreadsheet_obj
+    if _spreadsheet_obj is None:
+        _gspread_client = gspread.authorize(get_credentials())
+        _spreadsheet_obj = _gspread_client.open_by_key(SHEET_ID)
+    return _spreadsheet_obj
 
 
 def _col_letter(index: int) -> str:
@@ -47,37 +50,19 @@ def _col_letter(index: int) -> str:
 
 def ensure_header():
     """Write the header row if the sheet is empty."""
-    svc = _service()
-    result = svc.spreadsheets().values().get(
-        spreadsheetId=SHEET_ID, range="Sheet1!A1:A1"
-    ).execute()
-    if not result.get("values"):
-        svc.spreadsheets().values().update(
-            spreadsheetId=SHEET_ID,
-            range="Sheet1!A1",
-            valueInputOption="RAW",
-            body={"values": [COLUMNS]},
-        ).execute()
+    ws = _spreadsheet().worksheet("Sheet1")
+    if not ws.acell("A1").value:
+        ws.update("A1", [COLUMNS])
 
 
 def append_application(data: dict):
     ensure_header()
     row = [str(data.get(col, "")) for col in COLUMNS]
-    _service().spreadsheets().values().append(
-        spreadsheetId=SHEET_ID,
-        range="Sheet1!A1",
-        valueInputOption="RAW",
-        insertDataOption="INSERT_ROWS",
-        body={"values": [row]},
-    ).execute()
+    _spreadsheet().worksheet("Sheet1").append_row(row, value_input_option="RAW")
 
 
 def get_all_applications() -> list[dict]:
-    svc = _service()
-    result = svc.spreadsheets().values().get(
-        spreadsheetId=SHEET_ID, range="Sheet1"
-    ).execute()
-    rows = result.get("values", [])
+    rows = _spreadsheet().worksheet("Sheet1").get_all_values()
     if len(rows) < 2:
         return []
     header = rows[0]
@@ -98,12 +83,9 @@ def update_application_field(app_id: str, field: str, value: str):
 
 
 def update_application_fields(app_id: str, updates: dict):
-    """Update multiple fields for one application in a single Sheets batchUpdate."""
-    svc = _service()
-    result = svc.spreadsheets().values().get(
-        spreadsheetId=SHEET_ID, range="Sheet1"
-    ).execute()
-    rows = result.get("values", [])
+    """Update multiple fields for one application in a single batch call."""
+    ws = _spreadsheet().worksheet("Sheet1")
+    rows = ws.get_all_values()
     if not rows:
         return
     header = rows[0]
@@ -117,14 +99,11 @@ def update_application_fields(app_id: str, updates: dict):
                 if field in header:
                     col = header.index(field)
                     batch_data.append({
-                        "range": f"Sheet1!{_col_letter(col)}{i}",
+                        "range": f"{_col_letter(col)}{i}",
                         "values": [[str(value)]],
                     })
             if batch_data:
-                svc.spreadsheets().values().batchUpdate(
-                    spreadsheetId=SHEET_ID,
-                    body={"valueInputOption": "RAW", "data": batch_data},
-                ).execute()
+                ws.batch_update(batch_data)
             return
 
 
@@ -135,24 +114,16 @@ LOG_COLUMNS = ["timestamp", "app_id", "apartment", "event", "detail", "actor"]
 # Cached after first confirmed existence — reset on process restart
 _log_tab_ready = False
 
+
 def _ensure_log_tab():
     global _log_tab_ready
     if _log_tab_ready:
         return
-    svc = _service()
-    meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
-    sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
-    if "Log" not in sheet_names:
-        svc.spreadsheets().batchUpdate(
-            spreadsheetId=SHEET_ID,
-            body={"requests": [{"addSheet": {"properties": {"title": "Log"}}}]},
-        ).execute()
-        svc.spreadsheets().values().update(
-            spreadsheetId=SHEET_ID,
-            range="Log!A1",
-            valueInputOption="RAW",
-            body={"values": [LOG_COLUMNS]},
-        ).execute()
+    sh = _spreadsheet()
+    existing = [ws.title for ws in sh.worksheets()]
+    if "Log" not in existing:
+        ws = sh.add_worksheet(title="Log", rows=1000, cols=len(LOG_COLUMNS))
+        ws.update("A1", [LOG_COLUMNS])
     _log_tab_ready = True
 
 
@@ -161,13 +132,7 @@ def log_event(app_id: str, event: str, detail: str = "", actor: str = "system", 
         _ensure_log_tab()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
         row = [timestamp, app_id, apartment, event, detail, actor]
-        _service().spreadsheets().values().append(
-            spreadsheetId=SHEET_ID,
-            range="Log!A1",
-            valueInputOption="RAW",
-            insertDataOption="INSERT_ROWS",
-            body={"values": [row]},
-        ).execute()
+        _spreadsheet().worksheet("Log").append_row(row, value_input_option="RAW")
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"log_event failed: {e}")
@@ -176,11 +141,7 @@ def log_event(app_id: str, event: str, detail: str = "", actor: str = "system", 
 def get_application_log(app_id: str) -> list:
     """Return all log entries for a given application, oldest first."""
     try:
-        svc = _service()
-        result = svc.spreadsheets().values().get(
-            spreadsheetId=SHEET_ID, range="Log"
-        ).execute()
-        rows = result.get("values", [])
+        rows = _spreadsheet().worksheet("Log").get_all_values()
         if len(rows) < 2:
             return []
         header = rows[0]
@@ -196,24 +157,16 @@ VOTES_COLUMNS = ["app_id", "board_member_name", "board_member_email", "token", "
 
 _votes_tab_ready = False
 
+
 def _ensure_votes_tab():
     global _votes_tab_ready
     if _votes_tab_ready:
         return
-    svc = _service()
-    meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
-    sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
-    if "Votes" not in sheet_names:
-        svc.spreadsheets().batchUpdate(
-            spreadsheetId=SHEET_ID,
-            body={"requests": [{"addSheet": {"properties": {"title": "Votes"}}}]},
-        ).execute()
-        svc.spreadsheets().values().update(
-            spreadsheetId=SHEET_ID,
-            range="Votes!A1",
-            valueInputOption="RAW",
-            body={"values": [VOTES_COLUMNS]},
-        ).execute()
+    sh = _spreadsheet()
+    existing = [ws.title for ws in sh.worksheets()]
+    if "Votes" not in existing:
+        ws = sh.add_worksheet(title="Votes", rows=500, cols=len(VOTES_COLUMNS))
+        ws.update("A1", [VOTES_COLUMNS])
     _votes_tab_ready = True
 
 
@@ -221,13 +174,7 @@ def write_vote_tokens(app_id: str, members_with_tokens: list):
     """Append one row per board member to the Votes tab. members_with_tokens: [{name, email, token}]"""
     _ensure_votes_tab()
     rows = [[app_id, m["name"], m["email"], m["token"], "", ""] for m in members_with_tokens]
-    _service().spreadsheets().values().append(
-        spreadsheetId=SHEET_ID,
-        range="Votes!A1",
-        valueInputOption="RAW",
-        insertDataOption="INSERT_ROWS",
-        body={"values": rows},
-    ).execute()
+    _spreadsheet().worksheet("Votes").append_rows(rows, value_input_option="RAW")
 
 
 def record_vote(token: str) -> tuple:
@@ -237,17 +184,16 @@ def record_vote(token: str) -> tuple:
     or (None, 0) if token not found.
     """
     _ensure_votes_tab()
-    svc = _service()
-    result = svc.spreadsheets().values().get(spreadsheetId=SHEET_ID, range="Votes").execute()
-    rows = result.get("values", [])
+    ws = _spreadsheet().worksheet("Votes")
+    rows = ws.get_all_values()
     if len(rows) < 2:
         return None, 0
     header = rows[0]
     try:
-        token_col   = header.index("token")
-        vote_col    = header.index("vote")
-        voted_at_col = header.index("voted_at")
-        app_id_col  = header.index("app_id")
+        token_col    = header.index("token")
+        vote_col     = header.index("vote")
+        voted_at_col = header.index("voted_at")  # noqa: F841
+        app_id_col   = header.index("app_id")
     except ValueError:
         return None, 0
 
@@ -259,13 +205,10 @@ def record_vote(token: str) -> tuple:
         if padded[vote_col] == "approved":
             return app_id, -1  # already voted
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        svc.spreadsheets().values().batchUpdate(
-            spreadsheetId=SHEET_ID,
-            body={"valueInputOption": "RAW", "data": [
-                {"range": f"Votes!E{i}", "values": [["approved"]]},
-                {"range": f"Votes!F{i}", "values": [[now]]},
-            ]},
-        ).execute()
+        ws.batch_update([
+            {"range": f"E{i}", "values": [["approved"]]},
+            {"range": f"F{i}", "values": [[now]]},
+        ])
         # Count approvals already recorded (before this vote) + 1 for the vote we just wrote
         prev_approvals = sum(
             1 for r in rows[1:]
@@ -280,10 +223,7 @@ def get_pending_vote_rows(app_id: str) -> list:
     """Return pending (unvoted) rows for an application, INCLUDING tokens, for reminder emails."""
     try:
         _ensure_votes_tab()
-        result = _service().spreadsheets().values().get(
-            spreadsheetId=SHEET_ID, range="Votes"
-        ).execute()
-        rows = result.get("values", [])
+        rows = _spreadsheet().worksheet("Votes").get_all_values()
         if len(rows) < 2:
             return []
         header = rows[0]
@@ -303,10 +243,7 @@ def get_votes_for_app(app_id: str) -> list:
     """Return all vote rows for an application as list of dicts (token excluded)."""
     try:
         _ensure_votes_tab()
-        result = _service().spreadsheets().values().get(
-            spreadsheetId=SHEET_ID, range="Votes"
-        ).execute()
-        rows = result.get("values", [])
+        rows = _spreadsheet().worksheet("Votes").get_all_values()
         if len(rows) < 2:
             return []
         header = rows[0]
@@ -346,18 +283,15 @@ _SETTINGS_DEFAULTS = {
 # Cached after first confirmed existence — reset on process restart
 _settings_tab_ready = False
 
+
 def _ensure_settings_tab():
     global _settings_tab_ready
     if _settings_tab_ready:
         return
-    svc = _service()
-    meta = svc.spreadsheets().get(spreadsheetId=SHEET_ID).execute()
-    sheet_names = [s["properties"]["title"] for s in meta.get("sheets", [])]
-    if "Settings" not in sheet_names:
-        svc.spreadsheets().batchUpdate(
-            spreadsheetId=SHEET_ID,
-            body={"requests": [{"addSheet": {"properties": {"title": "Settings"}}}]},
-        ).execute()
+    sh = _spreadsheet()
+    existing = [ws.title for ws in sh.worksheets()]
+    if "Settings" not in existing:
+        ws = sh.add_worksheet(title="Settings", rows=100, cols=3)
         seed = dict(_SETTINGS_DEFAULTS)
         seed["engineer_1_emails"]        = os.environ.get("MELONE_EMAILS", "")
         seed["engineer_2_email"]         = os.environ.get("CAPOBIANCO_EMAIL", "")
@@ -366,23 +300,14 @@ def _ensure_settings_tab():
         seed["orsid_coordinator_email"]  = os.environ.get("ORSID_CC_EMAILS", "")
         header = [["key", "value", "updated_at"]]
         rows = [[k, v, datetime.now().strftime("%Y-%m-%d")] for k, v in seed.items()]
-        svc.spreadsheets().values().update(
-            spreadsheetId=SHEET_ID,
-            range="Settings!A1",
-            valueInputOption="RAW",
-            body={"values": header + rows},
-        ).execute()
+        ws.update("A1", header + rows)
     _settings_tab_ready = True
 
 
 def get_settings() -> dict:
     try:
         _ensure_settings_tab()
-        svc = _service()
-        result = svc.spreadsheets().values().get(
-            spreadsheetId=SHEET_ID, range="Settings"
-        ).execute()
-        rows = result.get("values", [])
+        rows = _spreadsheet().worksheet("Settings").get_all_values()
         settings = dict(_SETTINGS_DEFAULTS)
         settings["engineer_1_emails"]       = os.environ.get("MELONE_EMAILS", settings["engineer_1_emails"])
         settings["engineer_2_email"]        = os.environ.get("CAPOBIANCO_EMAIL", settings["engineer_2_email"])
@@ -405,11 +330,8 @@ def get_settings() -> dict:
 
 def save_settings(updates: dict):
     _ensure_settings_tab()
-    svc = _service()
-    result = svc.spreadsheets().values().get(
-        spreadsheetId=SHEET_ID, range="Settings"
-    ).execute()
-    rows = result.get("values", [])
+    ws = _spreadsheet().worksheet("Settings")
+    rows = ws.get_all_values()
     existing_keys = {row[0]: i + 2 for i, row in enumerate(rows[1:]) if row}
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
@@ -417,24 +339,16 @@ def save_settings(updates: dict):
     new_rows = []
     for key, value in updates.items():
         if key in existing_keys:
+            row_num = existing_keys[key]
             batch_data.append({
-                "range": f"Settings!B{existing_keys[key]}:C{existing_keys[key]}",
+                "range": f"B{row_num}:C{row_num}",
                 "values": [[str(value), now]],
             })
         else:
             new_rows.append([key, str(value), now])
 
     if batch_data:
-        svc.spreadsheets().values().batchUpdate(
-            spreadsheetId=SHEET_ID,
-            body={"valueInputOption": "RAW", "data": batch_data},
-        ).execute()
+        ws.batch_update(batch_data)
 
     for row in new_rows:
-        svc.spreadsheets().values().append(
-            spreadsheetId=SHEET_ID,
-            range="Settings!A1",
-            valueInputOption="RAW",
-            insertDataOption="INSERT_ROWS",
-            body={"values": [row]},
-        ).execute()
+        ws.append_row(row, value_input_option="RAW")
